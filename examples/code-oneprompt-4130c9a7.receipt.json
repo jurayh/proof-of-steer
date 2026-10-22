@@ -1,0 +1,134 @@
+{
+ "schema": "proof-of-steering/receipt@spike-0.1",
+ "label": "code-oneprompt-4130c9a7",
+ "kind": "code",
+ "transcript_sha256": "121df6bb227cc659adc8af758b4a3d70c55dea0885a700b96b721c2db5ceb61c",
+ "mechanistic": {
+  "human_turns": 1,
+  "injected_user_records_filtered": 2,
+  "correction_keyword_prompts": 0,
+  "prompts_after_error": 0,
+  "rubber_stamp_prompts": 0,
+  "tokens_in_deduped": 128,
+  "tokens_out_deduped": 61371,
+  "active_minutes_gapcap300": 16.3,
+  "wall_minutes": 16.3,
+  "verification_lanes": {
+   "test_like_shell": 0,
+   "shell_total": 8,
+   "browser_lane_actions": 0
+  },
+  "edit_write_ops": 39,
+  "edits_applied_in_reconstruction": 10,
+  "edits_unapplied_no_base": 1,
+  "edits_unapplied_no_match": 0
+ },
+ "git_join": {
+  "method": "reconstructed local git repo, one commit per human-turn segment; git blame on HEAD cross-checked vs in-memory line provenance",
+  "reconstructed_repo_local_path": "local path omitted",
+  "files_at_head": 28,
+  "final_nonblank_lines": 3113,
+  "git_ai_style_line_authorship": "100% agent-typed (every line entered via agent Write/Edit); identical for steered and one-prompt sessions \u2014 carries no triage signal on its own",
+  "first_artifact_segment": 0,
+  "first_segment_lines": 3113,
+  "first_segment_lines_surviving_to_head": 3113,
+  "first_segment_survival_pct": 100.0,
+  "share_of_head_already_present_after_first_segment_pct": 100.0,
+  "post_first_prompt_share_pct": 0.0,
+  "correction_segment_share_pct": 0.0,
+  "blame_vs_memory_provenance_agreement_pct": 100.0,
+  "per_segment": [
+   {
+    "segment": 0,
+    "prompt_chars": 818,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 39,
+    "lines_introduced_gross": 3123,
+    "lines_surviving_to_head": 3113
+   }
+  ],
+  "per_file": [
+   {
+    "file": "frontend/src/routes/index.tsx",
+    "final_lines": 294,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "frontend/src/components/ui.tsx",
+    "final_lines": 253,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "src/routes/jobs/$id.tsx",
+    "final_lines": 253,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "src/routes/jobs/index.tsx",
+    "final_lines": 250,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "src/routes/employer/dashboard.tsx",
+    "final_lines": 233,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "frontend/src/components/JobCard.tsx",
+    "final_lines": 232,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "frontend/src/components/Navbar.tsx",
+    "final_lines": 224,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "backend/src/routes/jobs.js",
+    "final_lines": 142,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "src/routes/employer/post-job.tsx",
+    "final_lines": 138,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "src/routes/candidate/dashboard.tsx",
+    "final_lines": 134,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "backend/src/routes/applications.js",
+    "final_lines": 123,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "src/routes/employer/edit-job.$id.tsx",
+    "final_lines": 121,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "src/routes/auth/register.tsx",
+    "final_lines": 98,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "src/routes/candidate/profile.tsx",
+    "final_lines": 95,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "backend/src/utils/email.js",
+    "final_lines": 83,
+    "first_segment_share_pct": 100.0
+   }
+  ]
+ },
+ "labels": {
+  "semantic_weights": "none \u2014 rule-based categories only; no model calls in this spike",
+  "receipt_nature": "descriptive evidence, not a certified grade"
+ }
+}

@@ -1,0 +1,184 @@
+{
+ "schema": "proof-of-steering/receipt@spike-0.1",
+ "label": "doc-steered-findings-draft",
+ "kind": "document",
+ "source": "local path omitted :: FINDINGS_DRAFT.md",
+ "revisions": 3,
+ "revision_shas": [
+  "bde19aa5",
+  "643f5743",
+  "a58f7e5e"
+ ],
+ "final_nonblank_lines": 242,
+ "overall_pct_unchanged_from_first_version": 36.0,
+ "per_section": [
+  {
+   "section": "personal-guard \u2014 findings draft (phase 1: instrument validation; phase 2: GPU-free real-model runs)",
+   "final_lines": 4,
+   "pct_unchanged_from_first_version": 75.0,
+   "pct_introduced_after_first_version": 25.0,
+   "introduced_by_revision": {
+    "rev1 (bde19aa5)": 3,
+    "rev3 (a58f7e5e)": 1
+   }
+  },
+  {
+   "section": "What was built and verified (executed, not assumed)",
+   "final_lines": 10,
+   "pct_unchanged_from_first_version": 100.0,
+   "pct_introduced_after_first_version": 0.0,
+   "introduced_by_revision": {
+    "rev1 (bde19aa5)": 10
+   }
+  },
+  {
+   "section": "The one honest caveat that governs everything below",
+   "final_lines": 8,
+   "pct_unchanged_from_first_version": 100.0,
+   "pct_introduced_after_first_version": 0.0,
+   "introduced_by_revision": {
+    "rev1 (bde19aa5)": 8
+   }
+  },
+  {
+   "section": "Instrument results (scripted models, seed 0, n=200/category)",
+   "final_lines": 26,
+   "pct_unchanged_from_first_version": 100.0,
+   "pct_introduced_after_first_version": 0.0,
+   "introduced_by_revision": {
+    "rev1 (bde19aa5)": 26
+   }
+  },
+  {
+   "section": "Calibration findings (the useful phase-1 output)",
+   "final_lines": 19,
+   "pct_unchanged_from_first_version": 100.0,
+   "pct_introduced_after_first_version": 0.0,
+   "introduced_by_revision": {
+    "rev1 (bde19aa5)": 19
+   }
+  },
+  {
+   "section": "Verdict against the kill criteria (phase 1)",
+   "final_lines": 10,
+   "pct_unchanged_from_first_version": 100.0,
+   "pct_introduced_after_first_version": 0.0,
+   "introduced_by_revision": {
+    "rev1 (bde19aa5)": 10
+   }
+  },
+  {
+   "section": "Rented-GPU cost estimate (checked 2026-10-17, secondary pricing pages)",
+   "final_lines": 17,
+   "pct_unchanged_from_first_version": 0.0,
+   "pct_introduced_after_first_version": 100.0,
+   "introduced_by_revision": {
+    "rev2 (643f5743)": 17
+   }
+  },
+  {
+   "section": "Next, in order",
+   "final_lines": 12,
+   "pct_unchanged_from_first_version": 91.7,
+   "pct_introduced_after_first_version": 8.3,
+   "introduced_by_revision": {
+    "rev1 (bde19aa5)": 11,
+    "rev3 (a58f7e5e)": 1
+   }
+  },
+  {
+   "section": "Phase 2 (2026-10-17): GPU-free \u2014 real adapters, prompt arm, hardened gate",
+   "final_lines": 9,
+   "pct_unchanged_from_first_version": 0.0,
+   "pct_introduced_after_first_version": 100.0,
+   "introduced_by_revision": {
+    "rev3 (a58f7e5e)": 9
+   }
+  },
+  {
+   "section": "What actually ran",
+   "final_lines": 11,
+   "pct_unchanged_from_first_version": 0.0,
+   "pct_introduced_after_first_version": 100.0,
+   "introduced_by_revision": {
+    "rev3 (a58f7e5e)": 11
+   }
+  },
+  {
+   "section": "Real probe items (new in phase 2)",
+   "final_lines": 12,
+   "pct_unchanged_from_first_version": 0.0,
+   "pct_introduced_after_first_version": 100.0,
+   "introduced_by_revision": {
+    "rev3 (a58f7e5e)": 12
+   }
+  },
+  {
+   "section": "Prompt-personalization arm (the PERG-for-prompts result)",
+   "final_lines": 25,
+   "pct_unchanged_from_first_version": 0.0,
+   "pct_introduced_after_first_version": 100.0,
+   "introduced_by_revision": {
+    "rev3 (a58f7e5e)": 25
+   }
+  },
+  {
+   "section": "Real-adapter instrument validation",
+   "final_lines": 22,
+   "pct_unchanged_from_first_version": 0.0,
+   "pct_introduced_after_first_version": 100.0,
+   "introduced_by_revision": {
+    "rev3 (a58f7e5e)": 22
+   }
+  },
+  {
+   "section": "Two instrument bugs found and fixed (both would have faked results)",
+   "final_lines": 16,
+   "pct_unchanged_from_first_version": 0.0,
+   "pct_introduced_after_first_version": 100.0,
+   "introduced_by_revision": {
+    "rev3 (a58f7e5e)": 16
+   }
+  },
+  {
+   "section": "Battery hardening (gate v2)",
+   "final_lines": 15,
+   "pct_unchanged_from_first_version": 0.0,
+   "pct_introduced_after_first_version": 100.0,
+   "introduced_by_revision": {
+    "rev3 (a58f7e5e)": 15
+   }
+  },
+  {
+   "section": "Manifest as a standalone deliverable",
+   "final_lines": 9,
+   "pct_unchanged_from_first_version": 0.0,
+   "pct_introduced_after_first_version": 100.0,
+   "introduced_by_revision": {
+    "rev3 (a58f7e5e)": 9
+   }
+  },
+  {
+   "section": "Still stubbed, and why",
+   "final_lines": 11,
+   "pct_unchanged_from_first_version": 0.0,
+   "pct_introduced_after_first_version": 100.0,
+   "introduced_by_revision": {
+    "rev3 (a58f7e5e)": 11
+   }
+  },
+  {
+   "section": "Next, in order (phase 3, unchanged blockers)",
+   "final_lines": 6,
+   "pct_unchanged_from_first_version": 0.0,
+   "pct_introduced_after_first_version": 100.0,
+   "introduced_by_revision": {
+    "rev3 (a58f7e5e)": 6
+   }
+  }
+ ],
+ "labels": {
+  "method": "git log --follow versions; exact-line provenance per section (conservative: any edit marks the line rewritten)",
+  "receipt_nature": "descriptive evidence, not a certified grade"
+ }
+}

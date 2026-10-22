@@ -1,0 +1,524 @@
+{
+ "schema": "proof-of-steering/receipt@spike-0.1",
+ "label": "code-steered-860618e1",
+ "kind": "code",
+ "transcript_sha256": "905ddb1d8d7f6ada5898a5085d0a190fbcb491bb66600c1561f64ad26164ce47",
+ "mechanistic": {
+  "human_turns": 40,
+  "injected_user_records_filtered": 0,
+  "correction_keyword_prompts": 12,
+  "prompts_after_error": 6,
+  "rubber_stamp_prompts": 0,
+  "tokens_in_deduped": 563,
+  "tokens_out_deduped": 102921,
+  "active_minutes_gapcap300": 111.3,
+  "wall_minutes": 121.2,
+  "verification_lanes": {
+   "test_like_shell": 0,
+   "shell_total": 38,
+   "browser_lane_actions": 0
+  },
+  "edit_write_ops": 70,
+  "edits_applied_in_reconstruction": 19,
+  "edits_unapplied_no_base": 13,
+  "edits_unapplied_no_match": 16
+ },
+ "git_join": {
+  "method": "reconstructed local git repo, one commit per human-turn segment; git blame on HEAD cross-checked vs in-memory line provenance",
+  "reconstructed_repo_local_path": "local path omitted",
+  "files_at_head": 21,
+  "final_nonblank_lines": 2907,
+  "git_ai_style_line_authorship": "100% agent-typed (every line entered via agent Write/Edit); identical for steered and one-prompt sessions \u2014 carries no triage signal on its own",
+  "first_artifact_segment": 0,
+  "first_segment_lines": 395,
+  "first_segment_lines_surviving_to_head": 395,
+  "first_segment_survival_pct": 100.0,
+  "share_of_head_already_present_after_first_segment_pct": 13.6,
+  "post_first_prompt_share_pct": 86.4,
+  "correction_segment_share_pct": 35.1,
+  "blame_vs_memory_provenance_agreement_pct": 99.5,
+  "per_segment": [
+   {
+    "segment": 0,
+    "prompt_chars": 16,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 395,
+    "lines_surviving_to_head": 395
+   },
+   {
+    "segment": 1,
+    "prompt_chars": 6630,
+    "correction_keyword": true,
+    "after_error": true,
+    "rubber_stamp": false,
+    "edit_write_ops": 3,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 2,
+    "prompt_chars": 42,
+    "correction_keyword": false,
+    "after_error": true,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 3,
+    "prompt_chars": 47,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 5,
+    "lines_introduced_gross": 403,
+    "lines_surviving_to_head": 174
+   },
+   {
+    "segment": 4,
+    "prompt_chars": 41,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 5,
+    "prompt_chars": 392,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 1,
+    "lines_introduced_gross": 221,
+    "lines_surviving_to_head": 221
+   },
+   {
+    "segment": 6,
+    "prompt_chars": 48,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 7,
+    "prompt_chars": 494,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 1,
+    "lines_introduced_gross": 2,
+    "lines_surviving_to_head": 1
+   },
+   {
+    "segment": 8,
+    "prompt_chars": 9801,
+    "correction_keyword": true,
+    "after_error": true,
+    "rubber_stamp": false,
+    "edit_write_ops": 4,
+    "lines_introduced_gross": 280,
+    "lines_surviving_to_head": 280
+   },
+   {
+    "segment": 9,
+    "prompt_chars": 52,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 10,
+    "prompt_chars": 53,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 11,
+    "prompt_chars": 126,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 1,
+    "lines_introduced_gross": 1,
+    "lines_surviving_to_head": 1
+   },
+   {
+    "segment": 12,
+    "prompt_chars": 17193,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 4,
+    "lines_introduced_gross": 520,
+    "lines_surviving_to_head": 513
+   },
+   {
+    "segment": 13,
+    "prompt_chars": 180,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 11,
+    "lines_introduced_gross": 685,
+    "lines_surviving_to_head": 680
+   },
+   {
+    "segment": 14,
+    "prompt_chars": 37,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 15,
+    "prompt_chars": 18,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 2,
+    "lines_surviving_to_head": 2
+   },
+   {
+    "segment": 16,
+    "prompt_chars": 56,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 17,
+    "prompt_chars": 38,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 18,
+    "prompt_chars": 17,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 19,
+    "prompt_chars": 145,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 4,
+    "lines_introduced_gross": 238,
+    "lines_surviving_to_head": 233
+   },
+   {
+    "segment": 20,
+    "prompt_chars": 36,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 1,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 21,
+    "prompt_chars": 26,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 22,
+    "prompt_chars": 1093,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 1,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 23,
+    "prompt_chars": 800,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 24,
+    "prompt_chars": 544,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 156,
+    "lines_surviving_to_head": 153
+   },
+   {
+    "segment": 25,
+    "prompt_chars": 65,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 26,
+    "prompt_chars": 35,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 27,
+    "prompt_chars": 59,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 7,
+    "lines_introduced_gross": 105,
+    "lines_surviving_to_head": 105
+   },
+   {
+    "segment": 28,
+    "prompt_chars": 58,
+    "correction_keyword": false,
+    "after_error": true,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 5,
+    "lines_surviving_to_head": 5
+   },
+   {
+    "segment": 29,
+    "prompt_chars": 18123,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 30,
+    "prompt_chars": 96,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 6,
+    "lines_introduced_gross": 11,
+    "lines_surviving_to_head": 11
+   },
+   {
+    "segment": 31,
+    "prompt_chars": 86,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 1,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 32,
+    "prompt_chars": 54,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 33,
+    "prompt_chars": 47,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 3,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 34,
+    "prompt_chars": 58,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 35,
+    "prompt_chars": 88,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 36,
+    "prompt_chars": 47,
+    "correction_keyword": false,
+    "after_error": true,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 37,
+    "prompt_chars": 39,
+    "correction_keyword": false,
+    "after_error": true,
+    "rubber_stamp": false,
+    "edit_write_ops": 1,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0
+   },
+   {
+    "segment": 38,
+    "prompt_chars": 63,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 53,
+    "lines_surviving_to_head": 53
+   },
+   {
+    "segment": 39,
+    "prompt_chars": 43,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 80,
+    "lines_surviving_to_head": 80
+   }
+  ],
+  "per_file": [
+   {
+    "file": "IceBerg/src/index.css",
+    "final_lines": 782,
+    "first_segment_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/style.css",
+    "final_lines": 380,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "IceBerg/src/pages/Connections.tsx",
+    "final_lines": 267,
+    "first_segment_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/connections.css",
+    "final_lines": 246,
+    "first_segment_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/home.css",
+    "final_lines": 233,
+    "first_segment_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/timelines.css",
+    "final_lines": 200,
+    "first_segment_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/worldbuilding.css",
+    "final_lines": 156,
+    "first_segment_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/books.css",
+    "final_lines": 138,
+    "first_segment_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/App.tsx",
+    "final_lines": 115,
+    "first_segment_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/pages/Books.tsx",
+    "final_lines": 99,
+    "first_segment_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/audience.css",
+    "final_lines": 94,
+    "first_segment_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/README.MD",
+    "final_lines": 76,
+    "first_segment_share_pct": 0.0
+   },
+   {
+    "file": "projects/d--IceBerg/memory/apple_css_style.md",
+    "final_lines": 52,
+    "first_segment_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/main.js",
+    "final_lines": 15,
+    "first_segment_share_pct": 100.0
+   },
+   {
+    "file": "IceBerg/src/index.tsx",
+    "final_lines": 17,
+    "first_segment_share_pct": 0.0
+   }
+  ]
+ },
+ "labels": {
+  "semantic_weights": "none \u2014 rule-based categories only; no model calls in this spike",
+  "receipt_nature": "descriptive evidence, not a certified grade"
+ }
+}
