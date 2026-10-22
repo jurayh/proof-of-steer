@@ -87,7 +87,7 @@ The field set was not asserted. It was tested, and some of it failed and got dem
 |---|---|---|
 | trace-commons, 28 Claude Code sessions | Full transcript-to-git join, replay provenance checked against `git blame` | Blame agreement 99.5 to 100%. Steered sessions separate from one-prompt controls on the headline field (batch medians 0.0% for sessions of 2 turns or fewer, 77.2% for 10 or more) |
 | SWE-chat (SALT-NLP), 17,968 sessions | Published steering statistics reproduced at scale | Steering presence validated, dose not: one-prompt sessions sit at 0.0, continued sessions near 0.75, pushback sessions near 0.97, and the value saturates. Published survival not reproduced, so survival stays a context field, stratified by agent |
-| CoAuthor, 1,445 writing sessions (CHI 2022) | Doc mode against keystroke-level ground truth: hide the keystrokes, keep only snapshots, score the map | Per-part labels validated: 88.3% sentence-level agreement, false-untouched rate about 0.05%. The headline percentage is a floor, not a dose |
+| CoAuthor, 1,447 writing sessions (CHI 2022) | Doc mode against keystroke-level ground truth: hide the keystrokes, keep only snapshots, score the map | Per-part labels validated: 88.3% sentence-level agreement, false-untouched rate about 0.05%. The headline percentage is a floor, not a dose |
 
 Full reports and methods live with the project history. The current validated scope is also printed on every receipt in its `validation_scope` field.
 
