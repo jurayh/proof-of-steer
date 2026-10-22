@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>proof-of-steer: Steered, not slop.</title>
+<meta name="description" content="A local receipt that shows how much a human actually steered the AI that made this, so the reader knows how hard to review it.">
+<style>
+:root{
+  --ink:#17222e; --muted:#5c6b7a; --line:#dde4ea; --card:#ffffff;
+  --first:#46689e; --follow:#2f8f83; --corr:#e07a3f; --err:#c94f5e;
+  --bg:#f6f8fa; --soft:#eef2f5; --warmbg:#fdeee1; --warmink:#a34d12;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  line-height:1.6;font-size:16.5px}
+.wrap{max-width:960px;margin:0 auto;padding:0 22px}
+header{padding:64px 0 30px;text-align:left}
+h1{font-size:44px;line-height:1.12;margin:0 0 6px;letter-spacing:-.01em}
+.tagline{font-size:21px;font-weight:650;margin:0 0 14px}
+.tagline .bond{color:var(--first)}
+.lede{font-size:18.5px;color:var(--muted);max-width:640px;margin:0 0 26px}
+.btns{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:38px}
+.btn{display:inline-block;padding:11px 20px;border-radius:9px;text-decoration:none;
+  font-weight:600;font-size:15.5px;border:1px solid var(--line)}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.ghost{background:var(--card);color:var(--ink)}
+section{padding:34px 0}
+section + section{border-top:1px solid var(--line)}
+h2{font-size:27px;line-height:1.25;margin:0 0 12px;letter-spacing:-.01em}
+h3{font-size:18px;margin:22px 0 8px}
+p{margin:0 0 14px;max-width:700px}
+.muted{color:var(--muted)}
+.big{font-size:20px;line-height:1.5;max-width:720px}
+figure{margin:22px 0;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:22px}
+figure svg{display:block;width:100%;height:auto}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
+.mode{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px}
+.mode h3{margin-top:0}
+.mode .num{font-size:30px;font-weight:700;line-height:1.2}
+.mode .num small{font-size:14px;font-weight:600;color:var(--muted)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:20px 0}
+.step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+.step .n{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--first);font-weight:700}
+.step p{font-size:15px;margin:6px 0 0}
+pre{background:var(--ink);color:#e8eef4;border-radius:10px;padding:16px 18px;
+  overflow-x:auto;font-size:13.8px;line-height:1.65;margin:12px 0 20px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+p code, li code{background:var(--soft);border-radius:5px;padding:1px 6px;font-size:.92em}
+table{width:100%;border-collapse:collapse;background:var(--card);
+  border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:18px 0;font-size:15px}
+th,td{text-align:left;padding:12px 16px;vertical-align:top}
+th{background:var(--soft);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+tr + tr td{border-top:1px solid var(--line)}
+ul{max-width:700px;padding-left:22px}
+li{margin-bottom:9px}
+.badge{display:inline-block;background:var(--warmbg);color:var(--warmink);
+  border-radius:20px;padding:1px 10px;font-size:12.5px;font-weight:600}
+footer{padding:30px 0 46px;color:var(--muted);font-size:13.5px;border-top:1px solid var(--line)}
+footer a{color:var(--first)}
+a{color:var(--first)}
+@media (max-width:720px){
+  h1{font-size:34px}
+  .grid,.steps{grid-template-columns:1fr}
+  header{padding:44px 0 22px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>proof-of-steer</h1>
+  <p class="tagline">Steered, <span class="bond">not slop.</span></p>
+  <p class="lede">A local receipt that shows how much a human actually steered the AI that made this, so the reader knows how hard to review it.</p>
+  <div class="btns">
+    <a class="btn primary" href="https://github.com/jurayh/proof-of-steer">View on GitHub</a>
+    <a class="btn ghost" href="steerprint.html">See a Steerprint</a>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 560 218" role="img" aria-label="Contrast between a one prompt session drawn as a single block and a steered session drawn as many varied blocks">
+      <defs>
+        <pattern id="heroHatch" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+          <rect width="6" height="6" fill="none"/>
+          <line x1="0" y1="0" x2="0" y2="6" stroke="#ffffff" stroke-width="1.6" opacity="0.55"/>
+        </pattern>
+      </defs>
+      <text x="0" y="14" font-size="11" letter-spacing="1.5" fill="#5c6b7a" font-weight="700">ONE PROMPT</text>
+      <rect x="0" y="24" width="526" height="30" rx="6" fill="#46689e"/>
+      <text x="0" y="82" font-size="11" letter-spacing="1.5" fill="#5c6b7a" font-weight="700">FORTY HUMAN TURNS</text>
+      <g>
+        <rect x="0"   y="92" width="69" height="30" rx="5" fill="#46689e"/>
+        <rect x="71"  y="92" width="33" height="30" rx="5" fill="#2f8f83"/>
+        <rect x="106" y="92" width="21" height="30" rx="5" fill="#e07a3f"/>
+        <rect x="129" y="92" width="45" height="30" rx="5" fill="#2f8f83"/>
+        <rect x="176" y="92" width="15" height="30" rx="5" fill="#c94f5e"/>
+        <rect x="193" y="92" width="39" height="30" rx="5" fill="#2f8f83"/>
+        <rect x="193" y="92" width="39" height="30" rx="5" fill="url(#heroHatch)"/>
+        <rect x="234" y="92" width="27" height="30" rx="5" fill="#e07a3f"/>
+        <rect x="263" y="92" width="18" height="30" rx="5" fill="#2f8f83"/>
+        <rect x="283" y="92" width="51" height="30" rx="5" fill="#2f8f83"/>
+        <rect x="336" y="92" width="14" height="30" rx="5" fill="#c94f5e"/>
+        <rect x="352" y="92" width="30" height="30" rx="5" fill="#e07a3f"/>
+        <rect x="352" y="92" width="30" height="30" rx="5" fill="url(#heroHatch)"/>
+        <rect x="384" y="92" width="42" height="30" rx="5" fill="#2f8f83"/>
+        <rect x="428" y="92" width="23" height="30" rx="5" fill="#2f8f83"/>
+        <rect x="453" y="92" width="36" height="30" rx="5" fill="#e07a3f"/>
+        <rect x="491" y="92" width="17" height="30" rx="5" fill="#c94f5e"/>
+        <rect x="510" y="92" width="16" height="30" rx="5" fill="#2f8f83"/>
+      </g>
+      <text x="0" y="150" font-size="11" letter-spacing="1.5" fill="#5c6b7a" font-weight="700">A DOCUMENT, SECTION BY SECTION</text>
+      <g>
+        <rect x="0"   y="160" width="170" height="13" rx="4" fill="#46689e"/>
+        <rect x="178" y="160" width="55"  height="13" rx="4" fill="#46689e"/>
+        <rect x="233" y="160" width="115" height="13" rx="4" fill="#e8893a"/>
+        <rect x="356" y="160" width="18"  height="13" rx="4" fill="#46689e"/>
+        <rect x="374" y="160" width="152" height="13" rx="4" fill="#eda154"/>
+      </g>
+      <text x="0" y="192" font-size="12" fill="#5c6b7a">Blue is the first prompt or first draft. Teal is follow-up steering. Orange is a correction.</text>
+      <text x="0" y="210" font-size="12" fill="#5c6b7a">Rose follows an error. Hatching marks lines that were later discarded.</text>
+    </svg>
+    <figcaption>One prompt leaves one block. Steering leaves a map. That map is a Steerprint, and any receipt can be drawn as one.</figcaption>
+  </figure>
+</header>
+
+<section>
+  <h2>The problem: two artifacts that look the same</h2>
+  <p>AI-produced pull requests and documents now arrive faster than anyone can read them. From the outside, a one-prompt artifact and a carefully steered one look exactly the same. The reviewer has one question, how much human judgment is in this, and the artifact itself gives no answer. So reviewers burn deep attention on work nobody steered, and careful work gets dismissed as slop because it wears the same uniform.</p>
+  <p>The tools that promise an answer measure authorship, what share of the lines an AI typed. That is the wrong question. In the real sessions in this repo, line authorship is 100% agent-typed in the steered session and 100% agent-typed in the one-prompt control. The agent types nearly everything either way. What differs is the steering, and authorship tools cannot see it at all.</p>
+
+  <figure>
+    <svg viewBox="0 0 560 240" role="img" aria-label="Two identical looking pull request cards arriving at a reviewer who cannot tell them apart">
+      <defs>
+        <marker id="arr1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" fill="#5c6b7a"/>
+        </marker>
+      </defs>
+      <g>
+        <rect x="10" y="26" width="200" height="82" rx="9" fill="#ffffff" stroke="#b9c4cf"/>
+        <text x="26" y="50" font-size="11" letter-spacing="1.5" fill="#5c6b7a" font-weight="700">AI-ASSISTED PR</text>
+        <rect x="26" y="62" width="150" height="7" rx="3.5" fill="#dde4ea"/>
+        <rect x="26" y="76" width="168" height="7" rx="3.5" fill="#dde4ea"/>
+        <rect x="26" y="90" width="120" height="7" rx="3.5" fill="#dde4ea"/>
+      </g>
+      <g>
+        <rect x="10" y="132" width="200" height="82" rx="9" fill="#ffffff" stroke="#b9c4cf"/>
+        <text x="26" y="156" font-size="11" letter-spacing="1.5" fill="#5c6b7a" font-weight="700">AI-ASSISTED PR</text>
+        <rect x="26" y="168" width="150" height="7" rx="3.5" fill="#dde4ea"/>
+        <rect x="26" y="182" width="168" height="7" rx="3.5" fill="#dde4ea"/>
+        <rect x="26" y="196" width="120" height="7" rx="3.5" fill="#dde4ea"/>
+      </g>
+      <line x1="216" y1="67" x2="330" y2="104" stroke="#5c6b7a" stroke-width="1.6" marker-end="url(#arr1)"/>
+      <line x1="216" y1="173" x2="330" y2="136" stroke="#5c6b7a" stroke-width="1.6" marker-end="url(#arr1)"/>
+      <g>
+        <circle cx="408" cy="96" r="17" fill="#eef2f5" stroke="#b9c4cf"/>
+        <circle cx="408" cy="90" r="6" fill="#5c6b7a"/>
+        <path d="M396 108 a12 9 0 0 1 24 0 z" fill="#5c6b7a"/>
+        <rect x="366" y="120" width="150" height="46" rx="9" fill="#ffffff" stroke="#b9c4cf"/>
+        <text x="441" y="140" font-size="11" letter-spacing="1.5" fill="#5c6b7a" font-weight="700" text-anchor="middle">REVIEWER</text>
+        <text x="441" y="158" font-size="11.5" fill="#5c6b7a" text-anchor="middle">How hard do I read this?</text>
+      </g>
+      <text x="300" y="52" font-size="44" font-weight="700" fill="#c94f5e" text-anchor="middle">?</text>
+    </svg>
+    <figcaption>Identical from the outside. Completely different inside. One of these took one prompt. The other took forty turns of correction and reshaping, and nothing on the surface says which is which.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>The reframe</h2>
+  <p class="big"><strong>Do not ask who typed it. Ask who was driving.</strong></p>
+  <p>proof-of-steer joins the record of the session to the history of the artifact and counts what observably happened. How many genuine human turns there were. How much of the shipped artifact arrived only after the first prompt. Which parts were reshaped in later revisions, and where the corrections landed. It prints those counts as a receipt the creator can attach to the work.</p>
+  <p>Three properties are the design, not features. It is <strong>sender-side and voluntary</strong>, generated by the person who did the work, like signing a commit. It is <strong>local</strong>, so the transcript never leaves the machine it happened on. And it is <strong>never a grade</strong>. A receipt is descriptive evidence a person can weigh, not a certified score.</p>
+</section>
+
+<section>
+  <h2>How it works</h2>
+
+  <figure>
+    <svg viewBox="0 0 560 232" role="img" aria-label="Flow from a session transcript and git history into proof-of-steer and out to a steering receipt and a Steerprint">
+      <defs>
+        <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" fill="#5c6b7a"/>
+        </marker>
+      </defs>
+      <g>
+        <rect x="0" y="30" width="132" height="52" rx="9" fill="#ffffff" stroke="#b9c4cf"/>
+        <text x="66" y="52" font-size="11" letter-spacing="1" fill="#17222e" font-weight="700" text-anchor="middle">SESSION</text>
+        <text x="66" y="69" font-size="11" letter-spacing="1" fill="#17222e" font-weight="700" text-anchor="middle">TRANSCRIPT</text>
+        <rect x="0" y="140" width="132" height="52" rx="9" fill="#ffffff" stroke="#b9c4cf"/>
+        <text x="66" y="162" font-size="11" letter-spacing="1" fill="#17222e" font-weight="700" text-anchor="middle">GIT</text>
+        <text x="66" y="179" font-size="11" letter-spacing="1" fill="#17222e" font-weight="700" text-anchor="middle">HISTORY</text>
+      </g>
+      <line x1="138" y1="56" x2="196" y2="96" stroke="#5c6b7a" stroke-width="1.6" marker-end="url(#arr2)"/>
+      <line x1="138" y1="166" x2="196" y2="126" stroke="#5c6b7a" stroke-width="1.6" marker-end="url(#arr2)"/>
+      <g>
+        <rect x="204" y="52" width="172" height="118" rx="10" fill="#eef2f5" stroke="#46689e" stroke-width="1.6"/>
+        <text x="290" y="76" font-size="11" letter-spacing="1" fill="#46689e" font-weight="700" text-anchor="middle">PROOF-OF-STEER</text>
+        <text x="290" y="100" font-size="12.5" fill="#17222e" text-anchor="middle">Replay by human segment</text>
+        <text x="290" y="120" font-size="12.5" fill="#17222e" text-anchor="middle">Provenance join</text>
+        <text x="290" y="140" font-size="12.5" fill="#17222e" text-anchor="middle">Blame cross-check</text>
+      </g>
+      <line x1="382" y1="88" x2="414" y2="66" stroke="#5c6b7a" stroke-width="1.6" marker-end="url(#arr2)"/>
+      <line x1="382" y1="134" x2="414" y2="156" stroke="#5c6b7a" stroke-width="1.6" marker-end="url(#arr2)"/>
+      <g>
+        <rect x="420" y="30" width="140" height="58" rx="9" fill="#ffffff" stroke="#b9c4cf"/>
+        <text x="490" y="53" font-size="11" letter-spacing="1" fill="#17222e" font-weight="700" text-anchor="middle">STEERING RECEIPT</text>
+        <text x="490" y="70" font-size="11" fill="#5c6b7a" text-anchor="middle">JSON + STEERING.md</text>
+        <rect x="420" y="134" width="140" height="58" rx="9" fill="#ffffff" stroke="#b9c4cf"/>
+        <text x="490" y="157" font-size="11" letter-spacing="1" fill="#17222e" font-weight="700" text-anchor="middle">STEERPRINT</text>
+        <text x="490" y="174" font-size="11" fill="#5c6b7a" text-anchor="middle">The visual map</text>
+      </g>
+    </svg>
+    <figcaption>Two records go in, the session and the history of what it produced. The join between them is where the steering lives.</figcaption>
+  </figure>
+
+  <div class="steps">
+    <div class="step">
+      <div class="n">Step 1</div>
+      <p><strong>Replay the session.</strong> The transcript is replayed turn by turn, with injected system records filtered out, so each genuine human prompt becomes one segment.</p>
+    </div>
+    <div class="step">
+      <div class="n">Step 2</div>
+      <p><strong>Join it to the artifact.</strong> Every line of the final artifact is traced back to the segment that introduced it. For documents, each later revision is traced the same way.</p>
+    </div>
+    <div class="step">
+      <div class="n">Step 3</div>
+      <p><strong>Cross-check and print.</strong> The replay is rebuilt as a local git repo and <code>git blame</code> independently verifies the provenance before the receipt is written.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Two modes</h2>
+  <div class="grid">
+    <div class="mode">
+      <h3>Code sessions</h3>
+      <p class="num">86.4% <small>of shipped lines arrived after the first prompt</small></p>
+      <p>The sample steered session ran <strong>40 human turns</strong>, 12 of them correction prompts, and shipped 21 files with 2,907 lines. The one-prompt control shipped a similar sized artifact with 1 turn and a post-first share of <strong>0.0%</strong>. Authorship calls both of them identical. The receipt does not.</p>
+      <p class="muted">Claude Code transcripts and Codex rollouts are both supported, and the format is detected automatically.</p>
+    </div>
+    <div class="mode">
+      <h3>Documents</h3>
+      <p class="num">36.0% <small>of the final text is unchanged from version one, and that is a floor</small></p>
+      <p>The sample is a research findings draft with <strong>3 revisions</strong> and 242 lines in its final version. The per-section map tells the story the average cannot. The phase one sections are 100% first draft. One whole section first appears in revision 2. Every phase two section arrives in revision 3.</p>
+      <p class="muted">Doc mode walks the committed revisions of any document in git and maps each section the same way.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The Steerprint</h2>
+  <p>The Steerprint is the receipt drawn as a map, and it is made to be shared. For a code session it draws one block per human turn, sized by the lines that turn introduced, colored by kind, and hatched where those lines were later discarded. For a document it draws one bar per section, split between the first draft and what later revisions introduced.</p>
+  <p>Read the sample like a reviewer. On the left, a steered session is a skyline of forty blocks in four colors. On the right, the one-prompt control is a single block, because nothing arrived after the first draft. Below, the findings draft shows its sections, the all-blue ones never touched again and the warm ones carrying judgment applied later.</p>
+  <p><a href="steerprint.html"><strong>Open the sample Steerprint</strong></a> and hover or tap any block for its numbers.</p>
+</section>
+
+<section>
+  <h2>How it gets used</h2>
+  <figure>
+    <svg viewBox="0 0 560 118" role="img" aria-label="Four step flow from a creator running the tool locally to a reviewer pricing the review before reading">
+      <defs>
+        <marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" fill="#5c6b7a"/>
+        </marker>
+      </defs>
+      <g font-size="11.5" fill="#17222e" text-anchor="middle">
+        <rect x="0" y="26" width="122" height="62" rx="9" fill="#ffffff" stroke="#b9c4cf"/>
+        <text x="61" y="52" font-weight="700">Creator runs it</text>
+        <text x="61" y="69">locally</text>
+        <rect x="146" y="26" width="122" height="62" rx="9" fill="#ffffff" stroke="#b9c4cf"/>
+        <text x="207" y="52" font-weight="700">Receipt attached</text>
+        <text x="207" y="69">to the PR or doc</text>
+        <rect x="292" y="26" width="122" height="62" rx="9" fill="#ffffff" stroke="#b9c4cf"/>
+        <text x="353" y="52" font-weight="700">Reviewer sees</text>
+        <text x="353" y="69">the steering</text>
+        <rect x="438" y="26" width="122" height="62" rx="9" fill="#eef2f5" stroke="#46689e" stroke-width="1.6"/>
+        <text x="499" y="52" font-weight="700">Review priced</text>
+        <text x="499" y="69">before reading</text>
+      </g>
+      <line x1="126" y1="57" x2="140" y2="57" stroke="#5c6b7a" stroke-width="1.6" marker-end="url(#arr4)"/>
+      <line x1="272" y1="57" x2="286" y2="57" stroke="#5c6b7a" stroke-width="1.6" marker-end="url(#arr4)"/>
+      <line x1="418" y1="57" x2="432" y2="57" stroke="#5c6b7a" stroke-width="1.6" marker-end="url(#arr4)"/>
+    </svg>
+    <figcaption>Nothing is uploaded and nobody is scanned. The person who did the work generates the evidence and chooses to attach it.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>Quickstart</h2>
+  <p>Requirements are Python 3, standard library only, and git on the path. There is nothing to install and nothing to sign up for.</p>
+
+  <h3>Code mode: a coding agent session</h3>
+  <pre><code>python3 steering_receipt.py code path/to/session.jsonl --label my-session</code></pre>
+  <p>Add <code>--repo</code> to seed the starting content of files the session edited but never created, so more of its edits can be replayed. If the repo has moved on since the session ran, seed from the commit the session ran against.</p>
+  <pre><code>python3 steering_receipt.py code path/to/session.jsonl --label my-session --repo path/to/repo
+python3 steering_receipt.py code path/to/session.jsonl --label my-session --repo path/to/repo --repo-ref &lt;commit&gt;</code></pre>
+  <p>Output lands in <code>receipts-out/</code> as a receipt JSON plus a rendered STEERING.md. Draw any receipt as a Steerprint with:</p>
+  <pre><code>python3 steering_viz.py my-session.receipt.json -o steerprint.html</code></pre>
+
+  <h3>Doc mode: a document in git</h3>
+  <pre><code>python3 steering_receipt.py doc path/to/repo docs/plan.md --label plan</code></pre>
+
+  <h3>Claude Code, automatic</h3>
+  <p>The repo ships a Claude Code plugin under <code>plugins/claude-code</code>. Its SessionEnd hook runs the receipt at the end of a session and writes it into a <code>.steering</code> folder in the project. A <code>/steering</code> command regenerates it on demand.</p>
+</section>
+
+<section>
+  <h2>Evidence</h2>
+  <p>The field set was not asserted. It was tested, and some of it failed and got demoted. That is the point of this table.</p>
+  <table>
+    <tr><th>Corpus</th><th>What was tested</th><th>Result</th></tr>
+    <tr>
+      <td>trace-commons, 28 Claude Code sessions</td>
+      <td>Full transcript to git join, with replay provenance checked against <code>git blame</code></td>
+      <td>Blame agreement 99.5 to 100%. Steered sessions separate from one-prompt controls on the headline field, with batch medians of 0.0% for sessions of 2 turns or fewer and 77.2% for 10 or more.</td>
+    </tr>
+    <tr>
+      <td>SWE-chat (SALT-NLP), 17,968 sessions</td>
+      <td>Published steering statistics reproduced at scale</td>
+      <td>Steering presence validated, dose not. One-prompt sessions sit at 0.0, continued sessions near 0.75, and pushback sessions near 0.97, and the value saturates. Published survival was not reproduced, so survival stays a context field, stratified by agent.</td>
+    </tr>
+    <tr>
+      <td>CoAuthor, 1,447 writing sessions (CHI 2022)</td>
+      <td>Doc mode against keystroke-level ground truth, scored with the keystrokes hidden</td>
+      <td>Per-part labels validated, with 88.3% sentence-level agreement and a false-untouched rate of about 0.05%. The headline percentage is a floor, not a dose.</td>
+    </tr>
+  </table>
+  <p class="muted">The validated scope travels with the evidence. It is printed on every receipt in its <code>validation_scope</code> field.</p>
+</section>
+
+<section>
+  <h2>Honest limits, and privacy</h2>
+  <ul>
+    <li><strong>Presence, not dose.</strong> The headline field reliably detects that steering happened. It does not measure how much the steering was worth, and it saturates on long sessions. Do not read it as a score.</li>
+    <li><strong>The doc-mode rejection blind spot.</strong> Revision history only shows what was written and later changed. Rejected suggestions and dismissed drafts never enter it, so doc-mode steering evidence is a lower bound on interaction. A quiet history does not prove a quiet process.</li>
+    <li><strong>Per-harness numbers do not pool.</strong> Pushback and survival rates differ sharply by agent harness. In SWE-chat, pushback runs 21% for one agent to 60% for another. Receipts carry a <code>harness</code> field, and context fields should only be compared within one harness.</li>
+    <li><strong>Reconstruction is partial.</strong> Edit replay can miss edits whose base it cannot establish. Coverage is printed on every receipt, so a thin receipt discounts itself.</li>
+    <li><strong>The bound this design respects.</strong> Purdue and its paper Likelihood Is Not Authorship (arXiv:2610.19767) shows that transcript-only likelihood scores cannot certify who authored a text. This tool makes no authorship claim and computes no such probability. It counts observable events and reports them as evidence.</li>
+    <li><strong>Privacy.</strong> Everything runs on your machine. The transcript and the repo never leave it. Receipts contain counts, categories, file names, and line attributions only. They never contain prompt text, tool arguments, or file contents. Share the receipt, keep the session.</li>
+  </ul>
+</section>
+
+<footer>
+  <p><a href="https://github.com/jurayh/proof-of-steer">proof-of-steer on GitHub</a> · MIT license · Steered, not slop.</p>
+</footer>
+
+</div>
+</body>
+</html>
