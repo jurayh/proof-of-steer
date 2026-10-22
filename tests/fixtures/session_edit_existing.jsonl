@@ -1,0 +1,3 @@
+{"type": "user", "timestamp": "2026-10-21T10:00:00Z", "message": {"content": [{"type": "text", "text": "Change the greeting to be friendlier"}]}}
+{"type": "assistant", "timestamp": "2026-10-21T10:00:20Z", "message": {"id": "msg_fixture_1", "usage": {"input_tokens": 100, "output_tokens": 40}, "content": [{"type": "tool_use", "name": "Edit", "input": {"file_path": "C:\\proj\\demo\\src\\app.py", "old_string": "    return \"hello \" + name", "new_string": "    return \"hello there, \" + name"}}]}}
+{"type": "user", "timestamp": "2026-10-21T10:00:25Z", "message": {"content": [{"type": "tool_result", "is_error": false, "content": "ok"}]}}
