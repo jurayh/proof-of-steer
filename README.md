@@ -102,9 +102,13 @@ Full reports and methods live with the project history. The current validated sc
 
 Purdue's "Likelihood Is Not Authorship" (arXiv:2610.19767) shows that transcript-only likelihood scores cannot certify who authored a text. proof-of-steer stays inside that bound: it makes no authorship claim and computes no probability that a human wrote something. It counts observable events (turns, corrections, revision provenance) and reports them as evidence a person can weigh.
 
-## Privacy
+## Your transcript is the private key. The receipt is the public one.
 
-Everything runs on your machine. The transcript and the repo never leave it. Receipts contain counts, categories, file names, and line attributions only. They never contain prompt text, tool arguments, or file contents. Share the receipt, keep the session.
+proof-of-steer is private by construction, not by policy. Everything runs on your machine and nothing is uploaded anywhere. What leaves the machine is only what you choose to attach to the work: the receipt.
+
+A session transcript is radioactive. It holds your code, your other projects, your half-formed thinking, and whatever you pasted at 1am. You could share it to prove you steered, the same way you could prove your identity by handing over your private key. Nobody sane does either. The receipt is derived from that private material and is safe to publish for the same reason a public key is. It carries counts, categories, file names, and line attributions, and never prompt text, tool arguments, or file contents. Anyone can check every claim on it without seeing the session it came from. Sharing is per artifact and sender-controlled. You publish a receipt for this pull request and everything else stays private.
+
+One honest break in the analogy, stated plainly. A public key is unforgeable and a receipt is not. It is descriptive evidence, not a cryptographic proof, and a determined faker can manufacture one. Part of that gap is specified to close. A hash commitment, computed at generation time and carried in the receipt, binds it to the exact transcript and repo state it was derived from. Commit now, reveal only if challenged. If a claim is ever disputed, the sender reveals the material and anyone can verify the receipt was honestly derived from it rather than written after the fact. The commitment is specified in the schema and arrives in the next build. Until then, share the receipt, keep the session.
 
 ## Tests
 
