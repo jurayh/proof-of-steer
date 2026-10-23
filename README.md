@@ -4,6 +4,10 @@
 
 A local receipt that shows how much a human actually steered the AI that made this, so the reader knows how hard to review it.
 
+![One prompt leaves one block. A steered session leaves a map.](assets/steerprint-contrast.png)
+
+*One prompt on top, one block. Below it, a real steered session: forty human turns, drawn from its receipt.*
+
 ## For maintainers and reviewers
 
 AI-produced pull requests and documents now arrive faster than anyone can read them, and from the outside a one-prompt artifact and a carefully steered one look exactly the same. proof-of-steer gives you a way to tell them apart before you spend your attention. Ask contributors to attach a steering receipt to their pull request, the way they attach test results. The receipt reports what observably happened while the artifact was made: how many genuine human turns there were, how much of the shipped artifact arrived only after the first prompt, which parts were reshaped in later revisions, and where the corrections landed. You price your review against evidence instead of a vibe, and careful contributors finally have a way to prove the care.
@@ -28,7 +32,26 @@ python3 steering_viz.py my-session.receipt.json -o steerprint.html
 
 ## Quickstart
 
-Requirements: Python 3 (standard library only) and git on PATH. Nothing is uploaded anywhere. There is nothing to install.
+Requirements: Python 3.8 or later (standard library only) and git on PATH. Nothing is uploaded anywhere.
+
+Run it without installing anything, if you have [uv](https://docs.astral.sh/uv/):
+
+```bash
+uvx proof-of-steer code path/to/session.jsonl --label my-session
+```
+
+Or install it:
+
+```bash
+pipx install proof-of-steer
+# or: pip install proof-of-steer
+```
+
+Or run it from a clone of this repo, where the commands below use `python3 steering_receipt.py` in place of `proof-of-steer`, and `python3 steering_viz.py` in place of `steerprint`. The two forms are the same tool.
+
+![A steered session building up turn by turn](assets/steerprint-animated.gif)
+
+*The same session, building turn by turn. The one-prompt control never grows.*
 
 ### Code mode: a coding agent session
 
