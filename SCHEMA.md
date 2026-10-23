@@ -204,3 +204,19 @@ Any change to a field's meaning, a demotion/promotion, or the seeding
 rule bumps the schema id (1.1, 2.0, …). Additive fields bump the minor
 version. Receipts state their schema id; renderers must not silently
 reinterpret an older receipt under a newer schema.
+
+## Specified, not yet emitted: `commitment`
+
+An optional top-level `commitment` block is fully specified but not
+yet emitted by any build, and no receipt produced today carries one.
+When implemented (target: the v1 adoption build, behind an opt-in
+`--commitment` flag) it records SHA-256 hashes of the exact material a
+receipt was derived from (the transcript bytes in code mode, the
+revision blob contents in doc mode, plus the reconstructed repo HEAD
+in code mode), so a sender who later reveals the material can prove
+the receipt was honestly derived from it and was not edited after the
+fact. It is additive, so the schema id stays
+`proof-of-steering/receipt@1.0`. The full specification, including the
+verification procedure and what it does and does not prove, lives in
+the project's `specs/hash-commitment.md` (it lands in this repo with
+the adoption build).
