@@ -1,4 +1,4 @@
-# proof-of-steer — receipt schema
+# Proof of Steering — receipt schema
 
 **Schema id: `proof-of-steering/receipt@1.0`** (frozen Oct 21, 2026;
 v1.1 changes Oct 22, 2026 are purely additive — the `harness` field and
@@ -11,7 +11,14 @@ rejection-blind-spot note — so the schema id stays `receipt@1.0`.
 v1.3 changes Oct 22, 2026 are likewise purely additive — a second code
 adapter (Codex rollouts, `harness: "codex"`, a new value of the existing
 field) and Codex-only coverage counters — so the schema id stays
-`receipt@1.0`)
+`receipt@1.0`.
+v1.4 changes Oct 22, 2026 (the adoption build) are likewise purely additive:
+document mode runs on history providers and gains `provider`,
+`history_complete`, `authors`, and `section_strategy`; code receipts gain
+`git_join.impact` effect classes and per-segment impact rows; both kinds
+gain the `mark` field; and the `commitment` block specified below is now
+emitted behind the opt-in `--commitment` flag, so the schema id stays
+`receipt@1.0`.)
 Emitted by `steering_receipt.py` as `<label>.receipt.json`, with a rendered
 `<label>.STEERING.md` alongside. Stdlib-only, computed locally; a receipt
 never contains raw prompt text, tool arguments, or file contents — counts,
@@ -34,8 +41,10 @@ Field-status vocabulary, from the spike verdict (SPIKE-REPORT.md §5):
 | `label` | string | Caller-supplied receipt label. |
 | `kind` | string | `code` or `document`. |
 | `harness` | string\|null | (v1.1, additive; `"codex"` value added v1.3) The harness the receipt's source came from: `"claude-code"` or `"codex"` for code receipts (see the Codex adapter section), `"git"` for document receipts (the source is a git history, no agent harness), `null` when unknown. Stratification key for the per-harness context fields — see the stratification note below. |
-| `validation_scope` | string | What the field set has been validated on so far. Current text (updated Oct 22, 2026 after the SWE-chat run and extended the same day with the CoAuthor result, full text in `steering_receipt.py`): validated on trace-commons (28 sessions, full join, blame ~100%) and local repositories; at-scale SWE-chat validation completed with a partial pass — bimodality approximately reproduced (40.9% vs 41%), pushback reproduced on the dominant agent (49.2% vs ~50%, Claude Code excl. first turns; pooled mix-sensitive), survival not reproduced (53.4% vs 59% under the dataset's metric-v2; per-agent 25–97%, so survival stays a context field stratified by agent). `post_first_prompt_share_pct` is validated as a steering-presence detector, not a dose measure. Document mode ground-truth-tested on CoAuthor (1,447 sessions): per-part map validated (sentence agreement 88.3%, false-untouched ~0.05%); headline % unchanged is a floor, not a dose estimate (MAE 13.0 pp, granularity-sensitive); document receipts contain no rejection evidence. Evidence: the SWE-chat validation report (VALIDATION.md) and the CoAuthor validation report (VALIDATION-coauthor.md) in the project records. |
+| `validation_scope` | string | What the field set has been validated on so far. Current text (updated Oct 22, 2026 after the SWE-chat run and extended the same day with the CoAuthor result, full text in `steering_receipt.py`): validated on trace-commons (28 sessions, full join, blame ~100%) and local repositories; at-scale SWE-chat validation completed with a partial pass — bimodality approximately reproduced (40.9% vs 41%), pushback reproduced on the dominant agent (49.2% vs ~50%, Claude Code excl. first turns; pooled mix-sensitive), survival not reproduced (53.4% vs 59% under the dataset's metric-v2; per-agent 25–97%, so survival stays a context field stratified by agent). `post_first_prompt_share_pct` is validated as a steering-presence detector, not a dose measure. Document mode ground-truth-tested on CoAuthor (1,447 sessions): per-part map validated (sentence agreement 88.3%, false-untouched ~0.05%); headline % unchanged is a floor, not a dose estimate (MAE 13.0 pp, granularity-sensitive); document receipts contain no rejection evidence. Evidence: `~/workspace/proof-of-steering/swe-chat/VALIDATION.md` and `~/workspace/proof-of-steering/coauthor/VALIDATION-coauthor.md`. |
 | `labels` | object | `receipt_nature` is always "descriptive evidence, not a certified grade". Code receipts add `semantic_weights` (always "none" in v1 — all categories are rule-based) and `field_status` summarising the demotions below. Doc receipts add `method`. |
+| `mark` | object | (v1.4, additive) The steering mark: `category` (one of One-shot, Prompted, Steered, Closely steered) and `basis` (one sentence naming the counts the category was computed from). Doc marks add `reshaped_sections` and `sections`. The mark names the process shape, how the work was steered, and is not a grade: it says nothing about quality, and a One-shot artifact can be exactly right. See "The steering mark" below for the definitions. |
+| `commitment` | object | (v1.4, additive; only when generated with `--commitment`) Hash commitment over the exact material the receipt was derived from. See the `commitment` section below. Never present when the flag was not passed; never null, never empty. |
 
 ### Per-harness stratification (v1.1)
 
@@ -85,7 +94,9 @@ the in-memory line provenance.
 | `git_join.context_fields.share_of_head_already_present_after_first_segment_pct` | float\|null | context | Share of HEAD lines that already existed (by exact line text) after the first artifact segment. |
 | `git_join.supporting_fields.correction_segment_share_pct` | float\|null | supporting (demoted) | Share of HEAD lines originating in correction-keyword or after-error segments. Noisy in both directions (0–100% in both spike groups); read jointly with `human_turns`. Pushback-derived: per-harness value, do not pool across harnesses. |
 | `git_join.blame_vs_memory_provenance_agreement_pct` | float\|null | — | Agreement between `git blame` attribution and in-memory provenance over HEAD lines. Below ~95% means the reconstruction itself is suspect. |
-| `git_join.per_segment[]` | array | headline | One row per segment: `segment` (index; −1 = pre-existing seed pseudo-segment, with `kind` set), `prompt_chars` (length only, never text), `correction_keyword`, `after_error`, `rubber_stamp`, `edit_write_ops`, `lines_introduced_gross`, `lines_surviving_to_head`. |
+| `git_join.impact` | object | headline (v1.4) | Effect-based segment classification (see the impact section below): `procedural_turns`, `continuation_turns`, `reshaping_turns`, `unmeasured_segments`, `reshaping_share_pct`, `reshaping_lines`, `redirect_segments`, `method`, and `scope` (the scope label keyed to the segment source). |
+| `mechanistic.session_origin` | object | context (v1.4, Codex only) | The rollout's `session_meta` origin metadata, `originator` and `source` (for example `codex_exec` / `exec` for unattended runs). Keys the impact scope label; absent when the rollout carries none. |
+| `git_join.per_segment[]` | array | headline | One row per segment: `segment` (index; −1 = pre-existing seed pseudo-segment, with `kind` set), `prompt_chars` (length only, never text), `correction_keyword`, `after_error`, `rubber_stamp`, `edit_write_ops`, `lines_introduced_gross`, `lines_surviving_to_head`. Human-segment rows add (v1.4) `impact_class`, `redirect`, and `overlap_earlier_lines`. |
 | `git_join.per_file[]` | array | headline | Up to 15 largest files at HEAD: `file`, `final_lines`, `first_segment_share_pct`, `preexisting_share_pct`. |
 
 ### Coverage fields (`mechanistic.coverage`)
@@ -163,16 +174,119 @@ extraction differs:
 - `--repo` / `--repo-ref` seeding applies unchanged (same replay), for
   rollouts whose workspace repo is on disk.
 
+### Impact classes (v1.4)
+
+Every human segment is classified by its **measured effect** on the
+artifact, computed from the replay's line provenance. Prompt text is
+never read for the classification (the keyword counts stay as a
+supporting field; the impact spike found the two detectors
+complementary, failing in near-disjoint ways).
+
+- `procedural_turns`: segments with no file ops attributed (approvals,
+  answers, discussion, shell-only turns). In interactive Claude Code
+  sessions 52.8% of turns are procedural, so a raw turn count overstates
+  steering roughly twofold before any other correction.
+- `continuation_turns`: segments whose applied ops only added lines,
+  touching no line an earlier segment introduced.
+- `reshaping_turns`: segments where an applied op edited or deleted at
+  least one line an earlier segment introduced (or deleted a file
+  containing such lines). A Codex patch hunk counts only the lines it
+  removes, never its context lines.
+- `unmeasured_segments`: segments with ops attributed but none applied
+  in the replay (no base, no string match). Always printed beside the
+  other counts, never folded into them; a receipt with many unmeasured
+  segments discounts itself, as low coverage does.
+- `reshaping_share_pct`: reshaping turns as a share of human turns.
+- `reshaping_lines`: total earlier-segment lines edited or deleted by
+  reshaping segments, so a 1-line touch and a 41-line rewrite do not
+  weigh the same.
+- `redirect_segments`: non-first human segments that were the first to
+  produce a file (an orthogonal first-touch count; a segment can be
+  both a redirect and any class above).
+
+Validation (impact spike, Oct 2026): reshaping share separated steered
+sessions (10+ turns) from near-one-prompt controls at AUC 0.929,
+against 0.602 for the keyword correction segment share and 0.616 for
+the keyword line share; every control measured exactly 0 reshaping
+segments. Code receipts carry the impact paragraph in their
+`validation_scope` text.
+
+**Scope label.** `git_join.impact.scope` states what the classes may be
+read as, keyed to the segment source the adapter knows. The classes
+measure inter-segment rework; they read as human-steering evidence
+only when the turns are genuine human input. For interactive Claude
+Code sessions the label says exactly that. For Codex rollouts whose
+`session_meta` origin is an unattended exec run (`originator:
+codex_exec` or `source: exec`), the label says the turns are scripted
+task prompts and reshaping measures the scripted schedule and agent
+self-repair, not a human steering: in the headless batch the follow-up
+prompts were a pre-written escalation ladder fired on schedule, and
+reshaping there (median share 66.7%) is dense by construction. For
+Codex rollouts without usable origin metadata, the label prints the
+general caution.
+
+## The steering mark (v1.4)
+
+The `mark` field distils a receipt into one category word plus its
+basis. The vocabulary is fixed: **One-shot**, **Prompted**, **Steered**,
+**Closely steered**. The definitions are mechanical, computed only
+from the presence-level fields above (never from survival or keyword
+shares):
+
+Code mode:
+
+- **One-shot**: no follow-up human segment changed the artifact (every
+  follow-up is procedural or unmeasured).
+- **Prompted**: follow-ups changed the artifact, but `reshaping_turns`
+  is 0: the follow-up work only ever added.
+- **Steered**: `reshaping_turns` is at least 1.
+- **Closely steered**: `reshaping_turns` is at least 3 and
+  `reshaping_share_pct` is at least 20.
+
+Document mode (a section counts as reshaped when it existed in the
+first version, some of its first-version lines survive, and later
+revisions also introduced lines into it):
+
+- **One-shot**: a single revision.
+- **Prompted**: later revisions only added sections; no existing
+  section was reshaped.
+- **Steered**: at least one section was reshaped.
+- **Closely steered**: reshaped sections are at least half of all
+  sections, or the unchanged floor is under 50%.
+
+The mark names the process shape and is not a grade. It ranks nothing:
+One-shot work can be exactly right and Closely steered work can still
+be wrong. It exists so a reader can price their attention in one word
+and then read the receipt for the evidence. STEERING.md renders the
+mark as a header line with its basis, and `steering_viz.py --badge`
+emits it as a small SVG badge (word plus the mini Steerprint strip for
+code receipts, word plus revision count for document receipts).
+
 ## Document receipts (`kind: "document"`)
 
-Source: one markdown file's git history (`git log --follow`), in any local
-repo. Shipped as-is from the spike. The `harness` field is `"git"` for
-this kind: the source is a revision history, not an agent harness, and no
-pushback/survival field is computed for documents.
+Source: the revision history of one document, read through a **history
+provider** (v1.4). The `harness` field names the provider for this
+kind: `"git"` for a git history, `"gdrive-doc"` or `"folder"` for the
+other registered providers. No pushback/survival field is computed for
+documents.
+
+Providers live in `providers/`, one module plus one registration line
+per source (see `../gdocs-spike/PROVIDER-DESIGN.md` for the contract):
+`git` (a file's `git log --follow` history in a local repo), `gdrive-doc`
+(Google Docs revisions via the Drive API, with an injectable transport
+seam for offline tests), and `folder` (a directory of versioned files,
+`notes.v1.md`, `notes.v2.md`, ...). The CLI's `doc` subcommand takes
+`--provider`; by default the provider is inferred from the reference
+(a document path means git, a directory means folder, a bare id means
+gdrive-doc), and the git path stays the default UX.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `source` | string | `<repo> :: <relative path>`. |
+| `source` | string | `<repo> :: <relative path>` for git; `folder :: <dir>` or `gdrive-doc :: <file id>` for the other providers. |
+| `provider` | string | (v1.4, additive) The history provider that produced the snapshots: `git`, `gdrive-doc`, or `folder`. |
+| `history_complete` | bool\|null | (v1.4, additive) Whether the provider can promise the snapshot list is the artifact's full history. Git promises it for a full clone and reports `false` for a shallow clone (checked with `git rev-parse --is-shallow-repository`); the folder provider promises it (the directory is the whole source of record); gdrive-doc reports `false` because the Drive API warns its revision list may be truncated. A receipt computed over an incomplete history baselines at the first available revision, and its unchanged floor must be read with that caveat. |
+| `authors` | array | (v1.4, additive) Distinct snapshot authors in first-appearance order, when the provider knows them (per-commit authors for git, `lastModifyingUser` for gdrive-doc; the folder provider knows none and the field is empty). Coverage metadata, never a join input. |
+| `section_strategy` | string | (v1.4, additive) The sectioning strategy that actually produced the per-section map: `markdown`, `heuristic`, or `whole`. See the sectioning note below. |
 | `revisions` | int | Committed versions of the file. 1 = one-shot document. |
 | `revision_count` | int | (v1.2, additive) The number of revisions the unchanged shares below were computed over — the same count as `revisions`, recorded alongside the headline because the headline floor is only interpretable together with it (see below). |
 | `revision_shas` | array | Short SHAs, oldest first. |
@@ -182,9 +296,39 @@ pushback/survival field is computed for documents.
 | `per_section[]` | array | **Headline.** Per heading-delimited section of the final version: `section`, `final_lines`, `pct_unchanged_from_first_version`, `pct_introduced_after_first_version`, `introduced_by_revision` (map of `revN (sha)` → distinct final lines first appearing in that revision). The per-section unchanged shares carry the same floor semantics as the overall headline; their "unchanged" labels are the high-precision part of the map (CoAuthor false-untouched rate ~0.05%). |
 | `labels.method` | string | Exact-line provenance; conservative — any edit marks a line rewritten; a moved-but-identical line still counts as unchanged (generous direction, noted in the spike report). |
 
-A "revision" is a commit. The map proves which parts changed after the
-first draft and when — steering evidence when revisions correspond to
-review rounds, not proof of who typed what.
+A "revision" is a commit (or the provider's equivalent snapshot). The
+map proves which parts changed after the first draft and when —
+steering evidence when revisions correspond to review rounds, not
+proof of who typed what.
+
+### Sectioning strategies (v1.4)
+
+Plain-text exports (the Google Docs shape) drop markdown heading
+markers, and a heading-less export fed to the markdown sectioner
+collapses into one "(preamble)" section, losing the per-section map.
+The join therefore sections the final version by a strategy, selected
+with `--section-strategy` (default `auto`) and recorded in the
+receipt's `section_strategy` field and `labels.method`:
+
+- `markdown`: split on `#{1,3}` heading lines (v1 behaviour).
+- `heuristic`: conservative heading-like line detection over plain
+  text. A line qualifies when it is short (at most 80 characters and
+  12 words), contains a letter, does not end in terminal punctuation
+  (`. ! ? ; :`), follows a blank line or the start of the text, and is
+  not a list item, table row, blockquote, or code fence. Tuned on a
+  real heading-less export (the Personal-Guard findings draft with its
+  markers stripped), where it recovered 17 of 18 headings with zero
+  false positives; the one miss is the 103-character title, over the
+  length cap by design. A heuristic map is softer evidence than a
+  marked one, and `labels.method` says so whenever this strategy ran.
+- `whole`: one "(whole document)" section. The fallback when nothing
+  qualifies; the overall floor and sentence share are still computed.
+
+`auto` resolves to `markdown` when heading markers exist, else
+`heuristic` when at least two heading-like lines qualify, else
+`whole`. Below two candidates the evidence for a map is too thin, so
+the whole-document fallback is the default behaviour and the heuristic
+is reachable per run with `--section-strategy heuristic`.
 
 ### Rejection blind spot (doc mode)
 
@@ -205,18 +349,50 @@ rule bumps the schema id (1.1, 2.0, …). Additive fields bump the minor
 version. Receipts state their schema id; renderers must not silently
 reinterpret an older receipt under a newer schema.
 
-## Specified, not yet emitted: `commitment`
+## Emitted behind a flag: `commitment` (v1.4)
 
-An optional top-level `commitment` block is fully specified but not
-yet emitted by any build, and no receipt produced today carries one.
-When implemented (target: the v1 adoption build, behind an opt-in
-`--commitment` flag) it records SHA-256 hashes of the exact material a
-receipt was derived from (the transcript bytes in code mode, the
-revision blob contents in doc mode, plus the reconstructed repo HEAD
-in code mode), so a sender who later reveals the material can prove
-the receipt was honestly derived from it and was not edited after the
-fact. It is additive, so the schema id stays
-`proof-of-steering/receipt@1.0`. The full specification, including the
-verification procedure and what it does and does not prove, lives in
-the project's `specs/hash-commitment.md` (it lands in this repo with
-the adoption build).
+An optional top-level `commitment` block, emitted only when the
+receipt was generated with `--commitment` (both subcommands; default
+off, because the binding to one exact byte stream is a deliberate act:
+re-exported or redacted transcripts change the hash and orphan every
+receipt committed against the earlier bytes). It records SHA-256
+hashes of the exact material the receipt was derived from, computed by
+the CLI in the same run from the same in-memory material it parsed;
+there is no mode that adds a commitment to an existing receipt.
+
+Fields (all digests lowercase hex, never truncated in the JSON):
+
+- `algorithm`: always `"sha256"`.
+- Code mode: `transcript_sha256` (over the exact session bytes the CLI
+  read; deliberately duplicates the top-level field so the block is
+  verifiable as a unit, and a receipt where they differ is malformed),
+  `repo_head_sha` (HEAD of the reconstructed repo), `seed_repo_head_sha`
+  (only when `--repo` was supplied and resolves to a commit), and
+  `artifact_file_sha256` (a map of every reconstructed HEAD file's
+  path to the SHA-256 of its blob bytes; this build always emits it).
+- Document mode: `revision_content_sha256` (one digest per revision,
+  oldest first, parallel to `revision_shas`; for git, over the stored
+  blob bytes from `git cat-file`; for other providers, over the
+  snapshot text as UTF-8, the only byte string those sources define)
+  and `final_content_sha256` (the last digest, duplicated as an
+  anchor).
+
+Under the flag, reconstructed-repo commits are created with author
+and committer dates pinned to each segment's first transcript
+timestamp (fallback chain: the first parseable timestamp in the
+transcript, then the epoch), and the reconstructed repo is rebuilt
+from scratch, so a verifier's re-run reproduces `repo_head_sha`
+exactly. STEERING.md renders exactly one commitment line with
+12-character truncated digests.
+
+Verification, in brief (full procedure in the project's
+`specs/hash-commitment.md` section 6; worked walkthrough in
+BUILD-NOTES.md): the sender reveals the material; the verifier hashes
+it and stops on any mismatch, re-runs the CLI with `--commitment` and
+the same seeding inputs, and diffs every field (volatile exceptions:
+`label`, and `git_join.reconstructed_repo_local_path`, which is
+machine-local). A full match proves the receipt was derived by this
+CLI from exactly that material and was not edited after the fact. It
+does not prove the material itself is authentic: a fabricated
+transcript committed early is still fabricated. The commitment is not
+a signature, and must not be described as one.
