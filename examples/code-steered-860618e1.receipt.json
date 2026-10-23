@@ -1,7 +1,13 @@
 {
- "schema": "proof-of-steering/receipt@spike-0.1",
+ "schema": "proof-of-steering/receipt@1.0",
  "label": "code-steered-860618e1",
  "kind": "code",
+ "harness": "claude-code",
+ "validation_scope": "Validated on trace-commons (28 sessions, full transcript-to-git join, blame agreement ~100%) and local repositories; at-scale validation on SWE-chat (SALT-NLP, 17,968 sessions) completed Oct 2026 with a partial pass: bimodality reproduced approximately (agent-all mode 40.9% vs published 41%), pushback reproduced on the dominant agent (49.2% vs ~50% for Claude Code excluding first turns; pooled 39.6-40.7% and agent-mix-sensitive), survival not reproduced (metric-v2 aggregate 53.4% vs published 59%; per-agent survival 25-97%, so survival stays a context field, stratified by agent where known). post_first_prompt_share is validated as a steering-presence detector (SWE-chat medians: 0.0 one-prompt, 0.75 continued no-pushback, 0.97 pushback sessions), not a steering-dose measure; at SWE-chat scale it was computed as the gross-added-lines analogue of this field's final-lines definition (see swe-chat/VALIDATION.md section 6). Document mode ground-truth-tested on CoAuthor (1,447 human-GPT-3 writing sessions, CHI 2022): per-part 'unchanged from first version' labels validated (sentence-level agreement 88.3%, false-untouched rate ~0.05%); the doc headline % unchanged is a floor on the untouched share, not a dose estimate (mean absolute error 13.0 pp against keystroke truth, sensitive to revision granularity). Document receipts contain no rejection evidence: material rejected or dismissed before it ever entered a revision is invisible to doc mode, so doc-mode steering evidence is a lower bound on interaction (see coauthor/VALIDATION-coauthor.md). Impact classification (v1.4, from the Oct 2026 impact spike): segments are also classified by measured effect on the artifact (procedural, continuation, reshaping, unmeasured) from line provenance alone. Reshaping share separated steered sessions from near-one-prompt controls at AUC 0.929, against 0.602 for the keyword correction segment share and 0.616 for the keyword line share; every control session measured exactly 0 reshaping segments. In interactive Claude Code sessions 52.8% of human turns are procedural (no file effect), so raw turn counts overstate steering roughly twofold. Scope caveat: reshaping detects inter-segment rework, and reads as human steering only when the segments are genuine human turns; in the headless Codex batch the follow-up prompts were a pre-written escalation ladder fired on schedule, and reshaping there (median share 66.7%) measures the scripted schedule and agent self-repair, not a human steering.",
+ "mark": {
+  "category": "Closely steered",
+  "basis": "40 human turns; 11 of them reshaped earlier work (27.5% of turns, 344 earlier lines rewritten)"
+ },
  "transcript_sha256": "905ddb1d8d7f6ada5898a5085d0a190fbcb491bb66600c1561f64ad26164ce47",
  "mechanistic": {
   "human_turns": 40,
@@ -19,23 +25,49 @@
    "browser_lane_actions": 0
   },
   "edit_write_ops": 70,
-  "edits_applied_in_reconstruction": 19,
-  "edits_unapplied_no_base": 13,
-  "edits_unapplied_no_match": 16
+  "coverage": {
+   "repo_supplied": false,
+   "seed_source": null,
+   "writes": 22,
+   "edits_total": 48,
+   "edits_applied_on_transcript_base": 19,
+   "edits_applied_on_repo_seeded_base": 0,
+   "edits_unapplied_no_base": 13,
+   "edits_unapplied_no_match": 16,
+   "files_seeded_from_repo": 0
+  }
  },
  "git_join": {
-  "method": "reconstructed local git repo, one commit per human-turn segment; git blame on HEAD cross-checked vs in-memory line provenance",
-  "reconstructed_repo_local_path": "local path omitted",
+  "method": "reconstructed local git repo, one commit per human-turn segment (plus a pre-existing commit when --repo seeding occurred); git blame on HEAD cross-checked vs in-memory line provenance",
+  "reconstructed_repo_local_path": null,
   "files_at_head": 21,
   "final_nonblank_lines": 2907,
-  "git_ai_style_line_authorship": "100% agent-typed (every line entered via agent Write/Edit); identical for steered and one-prompt sessions \u2014 carries no triage signal on its own",
+  "git_ai_style_line_authorship": "agent-typed vs pre-existing split is reported via per_segment origin -1; authorship alone carries no triage signal (spike finding)",
   "first_artifact_segment": 0,
-  "first_segment_lines": 395,
-  "first_segment_lines_surviving_to_head": 395,
-  "first_segment_survival_pct": 100.0,
-  "share_of_head_already_present_after_first_segment_pct": 13.6,
-  "post_first_prompt_share_pct": 86.4,
-  "correction_segment_share_pct": 35.1,
+  "headline_fields": {
+   "post_first_prompt_share_pct": 86.4,
+   "preexisting_share_pct": 0.0
+  },
+  "context_fields": {
+   "first_segment_lines": 395,
+   "first_segment_lines_surviving_to_head": 395,
+   "first_segment_survival_pct": 100.0,
+   "share_of_head_already_present_after_first_segment_pct": 13.6
+  },
+  "supporting_fields": {
+   "correction_segment_share_pct": 35.1
+  },
+  "impact": {
+   "method": "effect-based segment classification from line provenance (impact spike, Oct 2026): a segment is reshaping when an applied op edited or deleted lines an earlier segment introduced; prompt text is never read",
+   "procedural_turns": 16,
+   "continuation_turns": 5,
+   "reshaping_turns": 11,
+   "unmeasured_segments": 8,
+   "reshaping_share_pct": 27.5,
+   "reshaping_lines": 344,
+   "redirect_segments": 9,
+   "scope": "Impact classes measure inter-segment rework. The segments of this receipt are the human's own typed inputs in an interactive Claude Code session, so reshaping reads as human steering: a later input changed what an earlier input produced."
+  },
   "blame_vs_memory_provenance_agreement_pct": 99.5,
   "per_segment": [
    {
@@ -46,7 +78,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 2,
     "lines_introduced_gross": 395,
-    "lines_surviving_to_head": 395
+    "lines_surviving_to_head": 395,
+    "impact_class": "continuation",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 1,
@@ -56,7 +91,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 3,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "unmeasured",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 2,
@@ -66,7 +104,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 3,
@@ -76,7 +117,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 5,
     "lines_introduced_gross": 403,
-    "lines_surviving_to_head": 174
+    "lines_surviving_to_head": 174,
+    "impact_class": "continuation",
+    "redirect": true,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 4,
@@ -86,7 +130,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 5,
@@ -96,7 +143,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 1,
     "lines_introduced_gross": 221,
-    "lines_surviving_to_head": 221
+    "lines_surviving_to_head": 221,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 228
    },
    {
     "segment": 6,
@@ -106,7 +156,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 7,
@@ -116,7 +169,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 1,
     "lines_introduced_gross": 2,
-    "lines_surviving_to_head": 1
+    "lines_surviving_to_head": 1,
+    "impact_class": "continuation",
+    "redirect": true,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 8,
@@ -126,7 +182,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 4,
     "lines_introduced_gross": 280,
-    "lines_surviving_to_head": 280
+    "lines_surviving_to_head": 280,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 9
    },
    {
     "segment": 9,
@@ -136,7 +195,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 10,
@@ -146,7 +208,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 11,
@@ -156,7 +221,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 1,
     "lines_introduced_gross": 1,
-    "lines_surviving_to_head": 1
+    "lines_surviving_to_head": 1,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 2
    },
    {
     "segment": 12,
@@ -166,7 +234,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 4,
     "lines_introduced_gross": 520,
-    "lines_surviving_to_head": 513
+    "lines_surviving_to_head": 513,
+    "impact_class": "reshaping",
+    "redirect": true,
+    "overlap_earlier_lines": 17
    },
    {
     "segment": 13,
@@ -176,7 +247,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 11,
     "lines_introduced_gross": 685,
-    "lines_surviving_to_head": 680
+    "lines_surviving_to_head": 680,
+    "impact_class": "reshaping",
+    "redirect": true,
+    "overlap_earlier_lines": 16
    },
    {
     "segment": 14,
@@ -186,7 +260,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 15,
@@ -196,7 +273,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 2,
     "lines_introduced_gross": 2,
-    "lines_surviving_to_head": 2
+    "lines_surviving_to_head": 2,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 6
    },
    {
     "segment": 16,
@@ -206,7 +286,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 17,
@@ -216,7 +299,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 18,
@@ -226,7 +312,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 19,
@@ -236,7 +325,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 4,
     "lines_introduced_gross": 238,
-    "lines_surviving_to_head": 233
+    "lines_surviving_to_head": 233,
+    "impact_class": "reshaping",
+    "redirect": true,
+    "overlap_earlier_lines": 1
    },
    {
     "segment": 20,
@@ -246,7 +338,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 1,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "unmeasured",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 21,
@@ -256,7 +351,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 22,
@@ -266,7 +364,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 1,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "unmeasured",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 23,
@@ -276,7 +377,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 24,
@@ -286,7 +390,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 2,
     "lines_introduced_gross": 156,
-    "lines_surviving_to_head": 153
+    "lines_surviving_to_head": 153,
+    "impact_class": "continuation",
+    "redirect": true,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 25,
@@ -296,7 +403,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 26,
@@ -306,7 +416,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 27,
@@ -316,7 +429,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 7,
     "lines_introduced_gross": 105,
-    "lines_surviving_to_head": 105
+    "lines_surviving_to_head": 105,
+    "impact_class": "reshaping",
+    "redirect": true,
+    "overlap_earlier_lines": 1
    },
    {
     "segment": 28,
@@ -326,7 +442,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 2,
     "lines_introduced_gross": 5,
-    "lines_surviving_to_head": 5
+    "lines_surviving_to_head": 5,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 22
    },
    {
     "segment": 29,
@@ -336,7 +455,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 30,
@@ -346,7 +468,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 6,
     "lines_introduced_gross": 11,
-    "lines_surviving_to_head": 11
+    "lines_surviving_to_head": 11,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 41
    },
    {
     "segment": 31,
@@ -356,7 +481,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 1,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "unmeasured",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 32,
@@ -366,7 +494,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 2,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "unmeasured",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 33,
@@ -376,7 +507,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 3,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "unmeasured",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 34,
@@ -386,7 +520,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 2,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "unmeasured",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 35,
@@ -396,7 +533,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 36,
@@ -406,7 +546,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 0,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 37,
@@ -416,7 +559,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 1,
     "lines_introduced_gross": 0,
-    "lines_surviving_to_head": 0
+    "lines_surviving_to_head": 0,
+    "impact_class": "unmeasured",
+    "redirect": false,
+    "overlap_earlier_lines": 0
    },
    {
     "segment": 38,
@@ -426,7 +572,10 @@
     "rubber_stamp": false,
     "edit_write_ops": 2,
     "lines_introduced_gross": 53,
-    "lines_surviving_to_head": 53
+    "lines_surviving_to_head": 53,
+    "impact_class": "reshaping",
+    "redirect": true,
+    "overlap_earlier_lines": 1
    },
    {
     "segment": 39,
@@ -436,89 +585,109 @@
     "rubber_stamp": false,
     "edit_write_ops": 2,
     "lines_introduced_gross": 80,
-    "lines_surviving_to_head": 80
+    "lines_surviving_to_head": 80,
+    "impact_class": "continuation",
+    "redirect": true,
+    "overlap_earlier_lines": 0
    }
   ],
   "per_file": [
    {
     "file": "IceBerg/src/index.css",
     "final_lines": 782,
-    "first_segment_share_pct": 0.0
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
    },
    {
     "file": "IceBerg/style.css",
     "final_lines": 380,
-    "first_segment_share_pct": 100.0
+    "first_segment_share_pct": 100.0,
+    "preexisting_share_pct": 0.0
    },
    {
     "file": "IceBerg/src/pages/Connections.tsx",
     "final_lines": 267,
-    "first_segment_share_pct": 0.0
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
    },
    {
     "file": "IceBerg/src/connections.css",
     "final_lines": 246,
-    "first_segment_share_pct": 0.0
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
    },
    {
     "file": "IceBerg/src/home.css",
     "final_lines": 233,
-    "first_segment_share_pct": 0.0
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
    },
    {
     "file": "IceBerg/src/timelines.css",
     "final_lines": 200,
-    "first_segment_share_pct": 0.0
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
    },
    {
     "file": "IceBerg/src/worldbuilding.css",
     "final_lines": 156,
-    "first_segment_share_pct": 0.0
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
    },
    {
     "file": "IceBerg/src/books.css",
     "final_lines": 138,
-    "first_segment_share_pct": 0.0
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
    },
    {
     "file": "IceBerg/src/App.tsx",
     "final_lines": 115,
-    "first_segment_share_pct": 0.0
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
    },
    {
     "file": "IceBerg/src/pages/Books.tsx",
     "final_lines": 99,
-    "first_segment_share_pct": 0.0
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
    },
    {
     "file": "IceBerg/src/audience.css",
     "final_lines": 94,
-    "first_segment_share_pct": 0.0
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
    },
    {
     "file": "IceBerg/README.MD",
     "final_lines": 76,
-    "first_segment_share_pct": 0.0
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
    },
    {
     "file": "projects/d--IceBerg/memory/apple_css_style.md",
     "final_lines": 52,
-    "first_segment_share_pct": 0.0
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
    },
    {
     "file": "IceBerg/main.js",
     "final_lines": 15,
-    "first_segment_share_pct": 100.0
+    "first_segment_share_pct": 100.0,
+    "preexisting_share_pct": 0.0
    },
    {
     "file": "IceBerg/src/index.tsx",
     "final_lines": 17,
-    "first_segment_share_pct": 0.0
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
    }
   ]
  },
  "labels": {
-  "semantic_weights": "none \u2014 rule-based categories only; no model calls in this spike",
-  "receipt_nature": "descriptive evidence, not a certified grade"
+  "semantic_weights": "none \u2014 rule-based categories only; no model calls",
+  "receipt_nature": "descriptive evidence, not a certified grade",
+  "mark_semantics": "the mark names the process shape (how the work was steered), never its quality; it is not a grade",
+  "field_status": "headline_fields validated in spike; context_fields demoted (survival saturates on greenfield corpora); supporting_fields noisy, read jointly with turn count"
  }
 }

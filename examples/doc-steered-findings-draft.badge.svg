@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="352" height="56" viewBox="0 0 352 56" role="img" aria-label="proof-of-steer steering mark: Closely steered">
+<rect x="0.5" y="0.5" width="351" height="55" rx="9" fill="#f6f8fa" stroke="#dde4ea"/>
+<circle cx="18" cy="28" r="6" fill="#e07a3f"/>
+<text x="32" y="24" font-size="9.5" letter-spacing="1.6" fill="#5c6b7a" font-weight="700">PROOF-OF-STEER</text>
+<text x="32" y="43" font-size="16.5" font-weight="700" fill="#17222e">CLOSELY STEERED</text>
+<text x="344" y="34" font-size="13" fill="#5c6b7a" text-anchor="end">3 revisions · 18 sections</text>
+</svg>

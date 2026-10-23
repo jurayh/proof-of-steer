@@ -1,9 +1,21 @@
 {
- "schema": "proof-of-steering/receipt@spike-0.1",
+ "schema": "proof-of-steering/receipt@1.0",
  "label": "doc-steered-findings-draft",
  "kind": "document",
+ "harness": "git",
+ "provider": "git",
+ "history_complete": true,
+ "section_strategy": "markdown",
+ "mark": {
+  "category": "Closely steered",
+  "basis": "3 revisions; 1 of 18 sections were reshaped after introduction, and at least 36.0% of the final text survives verbatim from the first version",
+  "reshaped_sections": 1,
+  "sections": 18
+ },
+ "validation_scope": "Validated on trace-commons (28 sessions, full transcript-to-git join, blame agreement ~100%) and local repositories; at-scale validation on SWE-chat (SALT-NLP, 17,968 sessions) completed Oct 2026 with a partial pass: bimodality reproduced approximately (agent-all mode 40.9% vs published 41%), pushback reproduced on the dominant agent (49.2% vs ~50% for Claude Code excluding first turns; pooled 39.6-40.7% and agent-mix-sensitive), survival not reproduced (metric-v2 aggregate 53.4% vs published 59%; per-agent survival 25-97%, so survival stays a context field, stratified by agent where known). post_first_prompt_share is validated as a steering-presence detector (SWE-chat medians: 0.0 one-prompt, 0.75 continued no-pushback, 0.97 pushback sessions), not a steering-dose measure; at SWE-chat scale it was computed as the gross-added-lines analogue of this field's final-lines definition (see swe-chat/VALIDATION.md section 6). Document mode ground-truth-tested on CoAuthor (1,447 human-GPT-3 writing sessions, CHI 2022): per-part 'unchanged from first version' labels validated (sentence-level agreement 88.3%, false-untouched rate ~0.05%); the doc headline % unchanged is a floor on the untouched share, not a dose estimate (mean absolute error 13.0 pp against keystroke truth, sensitive to revision granularity). Document receipts contain no rejection evidence: material rejected or dismissed before it ever entered a revision is invisible to doc mode, so doc-mode steering evidence is a lower bound on interaction (see coauthor/VALIDATION-coauthor.md).",
  "source": "local path omitted :: FINDINGS_DRAFT.md",
  "revisions": 3,
+ "revision_count": 3,
  "revision_shas": [
   "bde19aa5",
   "643f5743",
@@ -11,6 +23,7 @@
  ],
  "final_nonblank_lines": 242,
  "overall_pct_unchanged_from_first_version": 36.0,
+ "unchanged_sentence_share_pct": 38.3,
  "per_section": [
   {
    "section": "personal-guard \u2014 findings draft (phase 1: instrument validation; phase 2: GPU-free real-model runs)",
@@ -178,7 +191,10 @@
   }
  ],
  "labels": {
-  "method": "git log --follow versions; exact-line provenance per section (conservative: any edit marks the line rewritten)",
+  "method": "provider snapshots (git); exact-line provenance per section (conservative: any edit marks the line rewritten); section strategy: markdown",
   "receipt_nature": "descriptive evidence, not a certified grade"
- }
+ },
+ "authors": [
+  "Yuriy H"
+ ]
 }

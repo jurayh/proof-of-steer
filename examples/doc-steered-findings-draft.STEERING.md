@@ -1,10 +1,16 @@
 # STEERING.md — doc-steered-findings-draft (document)
 
-_Descriptive evidence, not a certified grade. Counts and categories only; no prompt text._
+_Schema proof-of-steering/receipt@1.0. Descriptive evidence, not a certified grade. Counts and categories only; no prompt text._
+_Harness: git._
+_Validation scope: Validated on trace-commons (28 sessions, full transcript-to-git join, blame agreement ~100%) and local repositories; at-scale validation on SWE-chat (SALT-NLP, 17,968 sessions) completed Oct 2026 with a partial pass: bimodality reproduced approximately (agent-all mode 40.9% vs published 41%), pushback reproduced on the dominant agent (49.2% vs ~50% for Claude Code excluding first turns; pooled 39.6-40.7% and agent-mix-sensitive), survival not reproduced (metric-v2 aggregate 53.4% vs published 59%; per-agent survival 25-97%, so survival stays a context field, stratified by agent where known). post_first_prompt_share is validated as a steering-presence detector (SWE-chat medians: 0.0 one-prompt, 0.75 continued no-pushback, 0.97 pushback sessions), not a steering-dose measure; at SWE-chat scale it was computed as the gross-added-lines analogue of this field's final-lines definition (see swe-chat/VALIDATION.md section 6). Document mode ground-truth-tested on CoAuthor (1,447 human-GPT-3 writing sessions, CHI 2022): per-part 'unchanged from first version' labels validated (sentence-level agreement 88.3%, false-untouched rate ~0.05%); the doc headline % unchanged is a floor on the untouched share, not a dose estimate (mean absolute error 13.0 pp against keystroke truth, sensitive to revision granularity). Document receipts contain no rejection evidence: material rejected or dismissed before it ever entered a revision is invisible to doc mode, so doc-mode steering evidence is a lower bound on interaction (see coauthor/VALIDATION-coauthor.md)._
+- Steering mark: **Closely steered**. 3 revisions; 1 of 18 sections were reshaped after introduction, and at least 36.0% of the final text survives verbatim from the first version. The mark names the process shape, not a grade.
 
+- History provider: git (history complete: True; section strategy: markdown)
+- Authors: Yuriy H
 - Revisions in git history: 3 (bde19aa5, 643f5743, a58f7e5e)
 - Final size: 242 non-blank lines
-- Unchanged from first committed version: **36.0%**
+- Unchanged from first committed version: **at least 36.0%** of the final text survives verbatim from the first version (a floor, computed over 3 revisions: the exact-line rule only ever marks a line rewritten, so finer revision granularity only lowers this number)
+- Sentence-level unchanged share (the less granularity-sensitive prose measure): **38.3%** of final sentences appear verbatim in the first version
 
 ## Per-section steering map
 
