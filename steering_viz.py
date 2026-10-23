@@ -307,15 +307,16 @@ def badge_svg(r):
 </svg>
 """
 
-if __name__ == "__main__":
-    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    args = [a for a in argv if not a.startswith("-")]
     out_path = Path("collaboration-map.html")
-    if "-o" in sys.argv:
-        out_path = Path(sys.argv[sys.argv.index("-o") + 1])
+    if "-o" in argv:
+        out_path = Path(argv[argv.index("-o") + 1])
         args = [a for a in args if a != str(out_path)]
     receipts = [json.loads(Path(a).read_text(encoding="utf-8")) for a in args]
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    if "--badge" in sys.argv:
+    if "--badge" in argv:
         if len(receipts) != 1:
             sys.exit("--badge takes exactly one receipt")
         out_path.write_text(badge_svg(receipts[0]), encoding="utf-8")
@@ -323,3 +324,6 @@ if __name__ == "__main__":
     else:
         out_path.write_text(build(receipts), encoding="utf-8")
         print(f"wrote {out_path} ({out_path.stat().st_size:,} bytes) from {len(receipts)} receipts")
+
+if __name__ == "__main__":
+    main()
