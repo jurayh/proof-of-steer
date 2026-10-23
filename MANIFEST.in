@@ -1,0 +1,4 @@
+include SCHEMA.md
+graft specs
+graft examples
+graft tests
