@@ -1,4 +1,4 @@
-"""proof-of-steer v1 — steering receipt CLI. Stdlib only, local only.
+"""Proof of Steering v1 — steering receipt CLI. Stdlib only, local only.
 
 Evolved from the spike prototype (../steering_join.py). Changes in v1:
   - Receipt schema frozen as proof-of-steering/receipt@1.0 (see SCHEMA.md).
@@ -30,6 +30,20 @@ Evolved from the spike prototype (../steering_join.py). Changes in v1:
     coverage. Shell-side writes via exec_command are extracted only when
     unambiguous (a lone heredoc `cat >` write, a bare `rm <path>`) and
     otherwise counted as unparsed in coverage — never guessed.
+  - v1.4 (additive, schema stays receipt@1.0): the adoption build.
+    Doc mode is restructured onto a history-provider package
+    (providers/: git, gdrive-doc, folder) behind a registry, so doc
+    receipts gain `provider`, `history_complete`, and `authors` fields
+    and the doc subcommand gains `--provider`; the join lives in
+    doc_join.py and gains heading-less sectioning strategies for
+    plain-text exports (markdown / heuristic / whole). Code receipts
+    gain effect-based impact fields ported from the impact spike
+    (procedural / continuation / reshaping / unmeasured segment classes
+    computed from line provenance, never prompt text). Both kinds gain
+    a `mark` field (the steering mark: a category word naming the
+    process shape, never a grade). `--commitment` on both subcommands
+    emits the hash-commitment block specified in
+    ../specs/hash-commitment.md.
   - Survival and correction-segment share are demoted to context /
     supporting fields, per the spike verdict; every receipt carries a
     validation_scope field.
@@ -45,7 +59,7 @@ Usage:
   python3 steering_receipt.py code SESSION.jsonl --label L [--repo DIR [--repo-ref REF]] [--format auto|claude-code|codex] [--out DIR]
   python3 steering_receipt.py doc  REPO_DIR REL_MD_PATH --label L [--out DIR]
 """
-import argparse, hashlib, json, re, subprocess, sys
+import argparse, hashlib, json, os, re, shutil, subprocess, sys
 from collections import Counter
 from datetime import datetime
 from difflib import SequenceMatcher
@@ -78,6 +92,25 @@ VALIDATION_SCOPE = (
     "mode, so doc-mode steering evidence is a lower bound on interaction "
     "(see coauthor/VALIDATION-coauthor.md)."
 )
+IMPACT_SCOPE = (
+    " Impact classification (v1.4, from the Oct 2026 impact spike): "
+    "segments are also classified by measured effect on the artifact "
+    "(procedural, continuation, reshaping, unmeasured) from line "
+    "provenance alone. Reshaping share separated steered sessions from "
+    "near-one-prompt controls at AUC 0.929, against 0.602 for the "
+    "keyword correction segment share and 0.616 for the keyword line "
+    "share; every control session measured exactly 0 reshaping "
+    "segments. In interactive Claude Code sessions 52.8% of human "
+    "turns are procedural (no file effect), so raw turn counts "
+    "overstate steering roughly twofold. Scope caveat: reshaping "
+    "detects inter-segment rework, and reads as human steering only "
+    "when the segments are genuine human turns; in the headless Codex "
+    "batch the follow-up prompts were a pre-written escalation ladder "
+    "fired on schedule, and reshaping there (median share 66.7%) "
+    "measures the scripted schedule and agent self-repair, not a "
+    "human steering."
+)
+CODE_VALIDATION_SCOPE = VALIDATION_SCOPE + IMPACT_SCOPE
 PREEXISTING = -1  # origin segment index for lines seeded from --repo
 
 TEST_RE = re.compile(r"(pytest|npm (run )?test|yarn test|pnpm test|cargo test|go test|jest|vitest|mocha|make test|\btox\b|rspec|phpunit|ctest|gradle\w* test|mvn test|unittest|node --test)", re.I)
@@ -191,6 +224,7 @@ def parse_session(path):
                         "correction_keyword": bool(CORRECTION_RE.search(joined)),
                         "rubber_stamp": bool(RUBBER_RE.match(joined)),
                         "after_error": pending_error,
+                        "first_ts": r.get("timestamp"),
                         "ops": [], "tools": Counter(), "test_bash": 0,
                         "browser_actions": 0, "shell_calls": 0, "errors_seen": 0,
                     }
@@ -205,6 +239,7 @@ def parse_session(path):
             if cur is None:
                 cur = {"idx": len(segments), "prompt_chars": 0, "correction_keyword": False,
                        "rubber_stamp": False, "after_error": False, "pre_prompt": True,
+                       "first_ts": r.get("timestamp"),
                        "ops": [], "tools": Counter(), "test_bash": 0,
                        "browser_actions": 0, "shell_calls": 0, "errors_seen": 0}
                 segments.append(cur)
@@ -226,6 +261,7 @@ def parse_session(path):
         "active_min": active_minutes(ts_all),
         "wall_min": round((max(ts_all) - min(ts_all)).total_seconds() / 60, 1) if len(ts_all) > 1 else 0.0,
         "transcript_sha256": hashlib.sha256(transcript_bytes).hexdigest(),
+        "earliest_ts": min(ts_all).isoformat() if ts_all else None,
     }
 
 # ---------------------------------------------------------------- Codex adapter
@@ -268,10 +304,14 @@ def parse_patch(text, cwd):
     """Parse an apply_patch payload into join ops + parse counters.
 
     Add File -> ("write", fp, content); each Update hunk -> ("edit", fp,
-    (old_block, new_block)) with context lines in both blocks (they anchor
-    the replace the join performs); Delete File -> ("delete", fp);
-    Update + Move to -> ("move", fp, new_fp). A hunk with no old-side
-    lines cannot anchor a replace and is counted unparsed, never guessed.
+    (old_block, new_block), removed) with context lines in both blocks
+    (they anchor the replace the join performs) and `removed` the
+    frozenset of old-block line indices the hunk actually removes (its
+    '-' lines; v1.4, for impact touch accounting: context lines are
+    carried through unchanged and must not count as edited lines);
+    Delete File -> ("delete", fp); Update + Move to -> ("move", fp,
+    new_fp). A hunk with no old-side lines cannot anchor a replace and
+    is counted unparsed, never guessed.
     """
     ops = []
     pc = Counter()
@@ -319,7 +359,13 @@ def parse_patch(text, cwd):
                 i += 1
                 while i < n and (lines[i][:1] in (" ", "+", "-") or lines[i].startswith("\\")):
                     body.append(lines[i]); i += 1
-                old_block = [b[1:] for b in body if b[:1] in (" ", "-")]
+                old_block = []
+                removed_idx = []
+                for b in body:
+                    if b[:1] in (" ", "-"):
+                        if b[:1] == "-":
+                            removed_idx.append(len(old_block))
+                        old_block.append(b[1:])
                 new_block = [b[1:] for b in body if b[:1] in (" ", "+")]
                 if not old_block:
                     pc["hunks_unparsed"] += 1
@@ -327,7 +373,8 @@ def parse_patch(text, cwd):
                     pc["hunks_parsed"] += 1
                     if old_block != new_block:
                         ops.append(("edit", cx_path(cur_file, cwd),
-                                    ("\n".join(old_block), "\n".join(new_block))))
+                                    ("\n".join(old_block), "\n".join(new_block)),
+                                    frozenset(removed_idx)))
                 continue
             if ln.strip():
                 pc["body_lines_unparsed"] += 1
@@ -396,6 +443,7 @@ def parse_codex_session(path):
         except json.JSONDecodeError: continue
     # Pre-pass: session cwd, per-call patch outcomes, cumulative tokens.
     cwd = None
+    session_origin = None
     outcomes = {}
     tokens_in = tokens_out = 0
     ts_all = []
@@ -403,8 +451,15 @@ def parse_codex_session(path):
         t = parse_ts(r.get("timestamp"))
         if t: ts_all.append(t)
         p = r.get("payload") or {}
-        if r.get("type") == "session_meta" and p.get("cwd"):
-            cwd = p["cwd"]
+        if r.get("type") == "session_meta":
+            if p.get("cwd"):
+                cwd = p["cwd"]
+            if session_origin is None and (p.get("originator") or p.get("source")):
+                # Rollout origin metadata: distinguishes interactive
+                # front-ends from unattended exec runs. Keys the impact
+                # scope label (impact spike check 3).
+                session_origin = {"originator": p.get("originator"),
+                                  "source": p.get("source")}
         if p.get("type") == "custom_tool_call_output":
             outcomes[p.get("call_id")] = _output_text(p.get("output")).startswith("Exit code: 0")
     for r in records:  # patch_apply_end, when present, is authoritative
@@ -422,11 +477,12 @@ def parse_codex_session(path):
     pending_error = False
     injected = 0
 
-    def new_segment(prompt_text, pre=False):
+    def new_segment(prompt_text, pre=False, ts=None):
         seg = {"idx": len(segments), "prompt_chars": len(prompt_text),
                "correction_keyword": bool(CORRECTION_RE.search(prompt_text)) if prompt_text else False,
                "rubber_stamp": bool(RUBBER_RE.match(prompt_text)) if prompt_text else False,
                "after_error": pending_error, "ops": [], "tools": Counter(),
+               "first_ts": ts,
                "test_bash": 0, "browser_actions": 0, "shell_calls": 0, "errors_seen": 0}
         if pre: seg["pre_prompt"] = True
         segments.append(seg)
@@ -445,7 +501,7 @@ def parse_codex_session(path):
             if text.lstrip().startswith("<"):
                 injected += 1
                 continue
-            cur = new_segment(text)
+            cur = new_segment(text, ts=r.get("timestamp"))
             pending_error = False
         elif r.get("type") == "response_item" and pt == "message" and p.get("role") == "user":
             txt = "".join((c.get("text") or c.get("input_text") or "") for c in p.get("content") or [])
@@ -454,7 +510,7 @@ def parse_codex_session(path):
             # Genuine texts here duplicate the user_message events (the
             # segment starts above); wrappers are the injected count.
         elif r.get("type") == "response_item" and pt == "custom_tool_call" and p.get("name") == "apply_patch":
-            if cur is None: cur = new_segment("", pre=True)
+            if cur is None: cur = new_segment("", pre=True, ts=r.get("timestamp"))
             cur["tools"]["apply_patch"] += 1
             cx["patch_calls"] += 1
             ops, pc = parse_patch(p.get("input") or "", cwd)
@@ -472,7 +528,7 @@ def parse_codex_session(path):
                 cx["patch_hunks_unparsed"] += pc["hunks_unparsed"]
                 cx["patch_body_lines_unparsed"] += pc["body_lines_unparsed"]
         elif r.get("type") == "response_item" and pt == "function_call":
-            if cur is None: cur = new_segment("", pre=True)
+            if cur is None: cur = new_segment("", pre=True, ts=r.get("timestamp"))
             name = p.get("name", "?")
             cur["tools"][name] += 1
             if name == "exec_command":
@@ -498,6 +554,8 @@ def parse_codex_session(path):
         "active_min": active_minutes(ts_all),
         "wall_min": round((max(ts_all) - min(ts_all)).total_seconds() / 60, 1) if len(ts_all) > 1 else 0.0,
         "transcript_sha256": hashlib.sha256(transcript_bytes).hexdigest(),
+        "earliest_ts": min(ts_all).isoformat() if ts_all else None,
+        "session_origin": session_origin,
         "harness": "codex",
         "codex_coverage": {
             "patch_calls": cx["patch_calls"],
@@ -527,19 +585,43 @@ def detect_format(path):
     return "claude-code"
 
 # ---------------------------------------------------------------- replay
-def apply_ops(segments, seed_index=None):
+def _is_earlier_origin(org, seg_idx):
+    """True when a line's origin segment is an earlier human segment:
+    not this segment, not the pre-existing seed (origin -1 is the
+    repo's past, not an earlier turn of this session)."""
+    return org is not None and org != seg_idx and org >= 0
+
+def apply_ops(segments, seed_index=None, track=None):
     """Replay Write/Edit ops. Returns (files, stats, introduced, seeded_bases).
 
     files: path -> list[(line, origin_segment)]; origin PREEXISTING (-1) for
     lines that came from a --repo seed and were never agent-introduced.
+
+    When `track` is a dict, it is filled with per-segment impact
+    accounting (v1.4, ported from the impact spike's tracked replay):
+    track[seg_idx] gains ops_applied, overlap_earlier_lines (earlier-
+    segment lines an applied op edited or destroyed), overlap_delete_
+    lines (earlier lines removed by an applied Delete), and
+    first_touch_files (applied Writes to paths the replay had never
+    produced). The accounting mirrors the spike exactly: an Edit counts
+    the non-blank earlier-origin lines inside the replaced span (for
+    Codex patch hunks, only the lines the hunk removes, never its
+    context lines), and a Write/Edit merge additionally counts the
+    earlier-origin lines the merge destroys. Snapshot prefix replays
+    pass track=None and pay nothing for this.
     """
     files = {}
     stats = Counter()
     introduced = Counter()
     seeded_bases = {}   # fp -> original seeded lines (for the -1 snapshot)
     base_kind = {}      # fp -> "seeded" | "transcript"
+    touched = set()     # paths the replay has produced (impact first-touch)
 
-    def provenance_merge(old, new_lines, seg_idx):
+    def seg_track(seg_idx):
+        if track is None: return None
+        return track.setdefault(seg_idx, Counter())
+
+    def provenance_merge(old, new_lines, seg_idx, destroyed=None):
         old_texts = [l for l, _ in old]
         sm = SequenceMatcher(a=old_texts, b=new_lines, autojunk=False)
         out = []
@@ -550,6 +632,10 @@ def apply_ops(segments, seed_index=None):
                 for ln in new_lines[j1:j2]:
                     out.append((ln, seg_idx))
                     if ln.strip(): introduced[seg_idx] += 1
+            if destroyed is not None and tag in ("replace", "delete"):
+                for ln, org in old[i1:i2]:
+                    if ln.strip() and _is_earlier_origin(org, seg_idx):
+                        destroyed.append(org)
         return out
 
     def try_seed(fp):
@@ -562,27 +648,41 @@ def apply_ops(segments, seed_index=None):
         seeded_bases[fp] = lines
         files[fp] = [(l, PREEXISTING) for l in lines]
         base_kind[fp] = "seeded"
+        touched.add(fp)  # pre-existing: no segment can first-touch it
         stats["files_seeded"] += 1
         return True
 
     for seg in segments:
+        st = seg_track(seg["idx"])
         for op in seg["ops"]:
             if op[0] == "write":
                 _, fp, content = op
                 lines = content.splitlines()
                 old = files.get(fp, [])
-                files[fp] = provenance_merge(old, lines, seg["idx"]) if old else [(l, seg["idx"]) for l in lines]
+                destroyed = [] if track is not None else None
+                files[fp] = provenance_merge(old, lines, seg["idx"], destroyed) if old else [(l, seg["idx"]) for l in lines]
                 if not old: introduced[seg["idx"]] += sum(1 for l in lines if l.strip())
                 base_kind[fp] = "transcript"
                 stats["writes"] += 1
+                if track is not None:
+                    st["ops_applied"] += 1
+                    st["overlap_earlier_lines"] += len(destroyed or [])
+                    if fp not in touched:
+                        st["first_touch_files"] += 1
+                    touched.add(fp)
             elif op[0] == "delete":
                 # Codex apply_patch Delete File (the Claude Code adapter
-                # never emits this — Claude Code has no delete tool).
+                # never emits this; Claude Code has no delete tool).
                 _, fp = op
                 stats["deletes"] += 1
                 if fp in files:
-                    del files[fp]; base_kind.pop(fp, None)
+                    removed = files.pop(fp); base_kind.pop(fp, None)
                     stats["deletes_applied"] += 1
+                    if track is not None:
+                        st["ops_applied"] += 1
+                        st["overlap_delete_lines"] += sum(
+                            1 for l, org in removed
+                            if l.strip() and _is_earlier_origin(org, seg["idx"]))
                 else:
                     stats["deletes_unapplied"] += 1
             elif op[0] == "move":
@@ -593,25 +693,72 @@ def apply_ops(segments, seed_index=None):
                 if fp in files:
                     files[new_fp] = files.pop(fp)
                     base_kind[new_fp] = base_kind.pop(fp, "transcript")
+                    touched.add(new_fp)
+                    if track is not None: st["ops_applied"] += 1
                 else:
                     stats["moves_unapplied"] += 1
             else:
-                _, fp, (old_s, new_s) = op
+                fp = op[1]; (old_s, new_s) = op[2]
+                removed_mask = op[3] if len(op) > 3 else None
                 stats["edits"] += 1
                 if fp not in files and not try_seed(fp):
                     stats["edits_unapplied_no_base"] += 1; continue
-                cur_text = "\n".join(l for l, _ in files[fp])
+                cur = files[fp]
+                cur_text = "\n".join(l for l, _ in cur)
                 if old_s and old_s in cur_text:
+                    if track is not None:
+                        # Span accounting (impact spike): map the exact
+                        # occurrence replace() will hit to line indices
+                        # and count its non-blank earlier-origin lines.
+                        # A patch hunk's removed_mask restricts the count
+                        # to the lines the hunk removes; context lines in
+                        # the span are carried through, not edited.
+                        pos = cur_text.find(old_s)
+                        start = cur_text[:pos].count("\n")
+                        end = cur_text[:pos + len(old_s) - 1].count("\n")
+                        end = min(end, len(cur) - 1)
+                        for k, (ln, org) in enumerate(cur[start:end + 1]):
+                            if removed_mask is not None and k not in removed_mask:
+                                continue
+                            if ln.strip() and _is_earlier_origin(org, seg["idx"]):
+                                st["overlap_earlier_lines"] += 1
                     new_text = cur_text.replace(old_s, new_s, 1)
-                    files[fp] = provenance_merge(files[fp], new_text.splitlines(), seg["idx"])
+                    destroyed = [] if track is not None else None
+                    files[fp] = provenance_merge(cur, new_text.splitlines(), seg["idx"], destroyed)
+                    if track is not None:
+                        st["ops_applied"] += 1
+                        st["overlap_earlier_lines"] += len(destroyed or [])
                     stats["edits_applied_seeded" if base_kind.get(fp) == "seeded" else "edits_applied"] += 1
                 else:
                     stats["edits_unapplied_no_match"] += 1
     return files, stats, introduced, seeded_bases
 
-def build_git_repo(snapshots, out_repo):
+def _git_date_env(iso_ts):
+    """GIT_AUTHOR_DATE / GIT_COMMITTER_DATE for a pinned commit date
+    (hash-commitment spec section 4): the segment's first transcript
+    timestamp as a unix time in UTC. Unparseable input gives the epoch,
+    the spec's final fallback."""
+    dt = parse_ts(iso_ts) if iso_ts else None
+    if dt is None:
+        return {"GIT_AUTHOR_DATE": "@0 +0000", "GIT_COMMITTER_DATE": "@0 +0000"}
+    if dt.tzinfo is None:
+        from datetime import timezone
+        dt = dt.replace(tzinfo=timezone.utc)
+    # git's internal raw format; the "@" prefix matters: a bare "0 +0000"
+    # (the epoch fallback) is rejected as an invalid date format.
+    stamp = f"@{int(dt.timestamp())} +0000"
+    return {"GIT_AUTHOR_DATE": stamp, "GIT_COMMITTER_DATE": stamp}
+
+def build_git_repo(snapshots, out_repo, commit_dates=None):
     """One commit per snapshot (segment -1 = pre-existing seed base, if any).
-    Returns (commit_of_segment, blame Counter over non-blank lines)."""
+    Returns (commit_of_segment, blame Counter over non-blank lines).
+
+    `commit_dates` (v1.4, only under --commitment) maps segment index
+    to an ISO timestamp; author and committer dates of that segment's
+    commit are pinned to it so a verifier's re-run reproduces the same
+    HEAD SHA (specs/hash-commitment.md section 4). None keeps the
+    historical behaviour: wall-clock commit dates, unpinned.
+    """
     repo = Path(out_repo)
     repo.mkdir(parents=True, exist_ok=True)
     def git(*args, **kw):
@@ -629,7 +776,10 @@ def build_git_repo(snapshots, out_repo):
             dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
         git("add", "-A")
         msg = "segment -1 (pre-existing, seeded from --repo)" if seg_idx == PREEXISTING else f"segment {seg_idx}"
-        git("commit", "-q", "--allow-empty", "-m", msg)
+        kw = {}
+        if commit_dates is not None:
+            kw["env"] = {**os.environ, **_git_date_env(commit_dates.get(seg_idx))}
+        git("commit", "-q", "--allow-empty", "-m", msg, **kw)
         sha = git("rev-parse", "HEAD").stdout.strip()
         commit_of_segment[sha] = seg_idx
     blame = Counter()
@@ -643,8 +793,144 @@ def build_git_repo(snapshots, out_repo):
                 blame[commit_of_segment.get(cur_sha, -999)] += 1
     return commit_of_segment, blame
 
+# ---------------------------------------------------------------- impact + marks
+IMPACT_SCOPE_CC = (
+    "Impact classes measure inter-segment rework. The segments of this "
+    "receipt are the human's own typed inputs in an interactive Claude "
+    "Code session, so reshaping reads as human steering: a later input "
+    "changed what an earlier input produced.")
+IMPACT_SCOPE_CODEX_EXEC = (
+    "Impact classes measure inter-segment rework. This rollout's turns "
+    "are scripted task prompts fired by an unattended Codex exec run "
+    "(session origin: codex_exec / exec), not a human typing in reaction "
+    "to output, so reshaping here measures the scripted schedule and "
+    "agent self-repair, not human steering.")
+IMPACT_SCOPE_CODEX_OTHER = (
+    "Impact classes measure inter-segment rework. They read as "
+    "human-steering evidence only where the turns are genuine human "
+    "input; this rollout's origin metadata does not establish that.")
+
+def impact_scope_label(harness, meta):
+    if harness == "codex":
+        origin = meta.get("session_origin") or {}
+        if origin.get("originator") == "codex_exec" or origin.get("source") == "exec":
+            return IMPACT_SCOPE_CODEX_EXEC
+        return IMPACT_SCOPE_CODEX_OTHER
+    return IMPACT_SCOPE_CC
+
+def classify_impact(segments, track):
+    """Effect-based segment classes (v1.4; impact spike method).
+
+    Returns (impact_dict, per_segment_map) where per_segment_map maps
+    segment idx -> {"impact_class", "redirect", "overlap_earlier_lines"}
+    for genuine human segments. Classes, from measured effect only:
+    procedural (no ops attributed), unmeasured (ops attributed, none
+    applied in the replay), reshaping (an applied op edited or deleted
+    earlier-segment lines), continuation (anything else that applied).
+    """
+    human = [s for s in segments if not s.get("pre_prompt")]
+    first_idx = human[0]["idx"] if human else None
+    counts = Counter()
+    per = {}
+    reshaping_lines = 0
+    redirect_count = 0
+    for s in human:
+        idx = s["idx"]
+        t = (track or {}).get(idx) or Counter()
+        overlap = t["overlap_earlier_lines"] + t["overlap_delete_lines"]
+        if len(s["ops"]) == 0:
+            cls = "procedural"
+        elif t["ops_applied"] == 0:
+            cls = "unmeasured"
+        elif overlap > 0:
+            cls = "reshaping"
+        else:
+            cls = "continuation"
+        is_redirect = idx != first_idx and t["first_touch_files"] > 0
+        counts[cls] += 1
+        reshaping_lines += overlap
+        if is_redirect: redirect_count += 1
+        per[idx] = {"impact_class": cls, "redirect": is_redirect,
+                    "overlap_earlier_lines": overlap}
+    n = len(human)
+    impact = {
+        "method": ("effect-based segment classification from line provenance "
+                   "(impact spike, Oct 2026): a segment is reshaping when an "
+                   "applied op edited or deleted lines an earlier segment "
+                   "introduced; prompt text is never read"),
+        "procedural_turns": counts["procedural"],
+        "continuation_turns": counts["continuation"],
+        "reshaping_turns": counts["reshaping"],
+        "unmeasured_segments": counts["unmeasured"],
+        "reshaping_share_pct": round(100 * counts["reshaping"] / n, 1) if n else None,
+        "reshaping_lines": reshaping_lines,
+        "redirect_segments": redirect_count,
+    }
+    return impact, per
+
+def code_mark(impact, per_segment_map):
+    """The steering mark (code mode). A category word naming the
+    process shape; it is not a grade (see SCHEMA.md)."""
+    turns = (impact["procedural_turns"] + impact["continuation_turns"]
+             + impact["reshaping_turns"] + impact["unmeasured_segments"])
+    effect_followups = 0
+    seen_first = False
+    for idx in sorted(per_segment_map):
+        if not seen_first:
+            seen_first = True
+            continue
+        if per_segment_map[idx]["impact_class"] in ("continuation", "reshaping"):
+            effect_followups += 1
+    r, share, lines = (impact["reshaping_turns"], impact["reshaping_share_pct"],
+                       impact["reshaping_lines"])
+    if effect_followups == 0:
+        return {"category": "One-shot",
+                "basis": f"{turns} human turn{'s' if turns != 1 else ''}; no follow-up turn changed the artifact"}
+    if r == 0:
+        return {"category": "Prompted",
+                "basis": f"{turns} human turns; follow-ups added work but never reshaped what an earlier turn produced"}
+    if r >= 3 and share is not None and share >= 20:
+        return {"category": "Closely steered",
+                "basis": (f"{turns} human turns; {r} of them reshaped earlier work "
+                          f"({share}% of turns, {lines} earlier lines rewritten)")}
+    return {"category": "Steered",
+            "basis": (f"{turns} human turns; {r} reshaped earlier work "
+                      f"({lines} earlier lines rewritten)")}
+
+def doc_mark(sections, revisions, floor_pct):
+    """The steering mark (doc mode). `sections` are per-section dicts
+    as doc_join builds them, still carrying the private `_first_titles`
+    set. A section counts as reshaped when it already existed in the
+    first version (its title is among the first version's sections),
+    some of its first-version lines survive, and later revisions also
+    introduced lines into it."""
+    first_titles = sections[0]["_first_titles"] if sections else set()
+    reshaped = sum(1 for s in sections
+                   if s["section"] in first_titles
+                   and s["pct_unchanged_from_first_version"] > 0
+                   and len(s["introduced_by_revision"]) > 1)
+    n = len(sections)
+    if revisions <= 1:
+        cat, basis = "One-shot", "1 revision; nothing arrived after the first version"
+    elif reshaped == 0:
+        cat = "Prompted"
+        basis = (f"{revisions} revisions; later revisions only added sections "
+                 f"and never reshaped a section that already existed")
+    elif reshaped * 2 >= max(1, n) or (floor_pct is not None and floor_pct < 50):
+        cat = "Closely steered"
+        basis = (f"{revisions} revisions; {reshaped} of {n} sections were reshaped "
+                 f"after introduction, and at least {floor_pct}% of the final text "
+                 f"survives verbatim from the first version")
+    else:
+        cat = "Steered"
+        basis = (f"{revisions} revisions; {reshaped} of {n} sections were reshaped "
+                 f"after they were introduced")
+    return {"category": cat, "basis": basis,
+            "reshaped_sections": reshaped, "sections": n}
+
 # ---------------------------------------------------------------- code receipt
-def code_receipt(session_path, label, repo_dir=None, repo_ref=None, recon_dir=None, fmt="auto"):
+def code_receipt(session_path, label, repo_dir=None, repo_ref=None, recon_dir=None, fmt="auto",
+                 commitment=False):
     if fmt == "auto":
         fmt = detect_format(session_path)
     if fmt == "codex":
@@ -653,7 +939,8 @@ def code_receipt(session_path, label, repo_dir=None, repo_ref=None, recon_dir=No
         segments, meta = parse_session(session_path)
         fmt = "claude-code"
     seed_index = SeedIndex(repo_dir, ref=repo_ref) if repo_dir else None
-    files, stats, introduced, seeded_bases = apply_ops(segments, seed_index)
+    track = {}
+    files, stats, introduced, seeded_bases = apply_ops(segments, seed_index, track=track)
     # snapshots: optional -1 seed base, then one per segment (prefix replays)
     snapshots = []
     if seeded_bases:
@@ -663,7 +950,26 @@ def code_receipt(session_path, label, repo_dir=None, repo_ref=None, recon_dir=No
         snapshots.append((segments[i]["idx"], {fp: [l for l, _ in v] for fp, v in f_i.items()}))
     if recon_dir is None:
         recon_dir = Path(__file__).parent / "reconstructed" / f"reconstructed-{label}"
-    commit_map, blame = build_git_repo(snapshots, recon_dir) if snapshots else ({}, Counter())
+    commit_dates = None
+    if commitment:
+        # A committed receipt must be reproducible bit-for-bit by a
+        # verifier's re-run (spec section 4): rebuild the reconstructed
+        # repo from scratch with pinned commit dates, so its HEAD SHA
+        # depends only on the transcript and the seeding inputs.
+        if Path(recon_dir).exists():
+            shutil.rmtree(recon_dir)
+        fallback = meta.get("earliest_ts") or "1970-01-01T00:00:00+00:00"
+        def pinned_ts(seg):
+            # Spec fallback chain: the segment's own first timestamp if
+            # parseable, else the first parseable timestamp in the
+            # transcript, else (inside _git_date_env) the epoch.
+            ts = seg.get("first_ts")
+            return ts if (ts and parse_ts(ts)) else fallback
+        seg_ts = [s.get("first_ts") for s in segments if s.get("first_ts") and parse_ts(s["first_ts"])]
+        commit_dates = {s["idx"]: pinned_ts(s) for s in segments}
+        if seeded_bases:
+            commit_dates[PREEXISTING] = min(seg_ts) if seg_ts else fallback
+    commit_map, blame = build_git_repo(snapshots, recon_dir, commit_dates=commit_dates) if snapshots else ({}, Counter())
     total_final = sum(1 for v in files.values() for l, _ in v if l.strip())
     origin_counts = Counter()
     for v in files.values():
@@ -690,6 +996,9 @@ def code_receipt(session_path, label, repo_dir=None, repo_ref=None, recon_dir=No
     first_surviving = sum(min(first_lines[l], final_lines_counter.get(l, 0)) for l in first_lines)
     first_total = sum(first_lines.values())
     corr_segs = {s["idx"] for s in segments if s["correction_keyword"] or s["after_error"]}
+    impact, impact_per = classify_impact(segments, track)
+    impact["scope"] = impact_scope_label(fmt, meta)
+    mark = code_mark(impact, impact_per)
     per_segment = []
     if origin_counts.get(PREEXISTING):
         per_segment.append({
@@ -699,13 +1008,16 @@ def code_receipt(session_path, label, repo_dir=None, repo_ref=None, recon_dir=No
             "lines_surviving_to_head": origin_counts[PREEXISTING],
         })
     for s in segments:
-        per_segment.append({
+        row = {
             "segment": s["idx"], "prompt_chars": s["prompt_chars"],
             "correction_keyword": s["correction_keyword"], "after_error": s["after_error"],
             "rubber_stamp": s["rubber_stamp"], "edit_write_ops": len(s["ops"]),
             "lines_introduced_gross": introduced.get(s["idx"], 0),
             "lines_surviving_to_head": origin_counts.get(s["idx"], 0),
-        })
+        }
+        if s["idx"] in impact_per:
+            row.update(impact_per[s["idx"]])
+        per_segment.append(row)
     coverage = {
         "repo_supplied": bool(repo_dir),
         "seed_source": seed_index.seed_source if seed_index else None,
@@ -722,7 +1034,8 @@ def code_receipt(session_path, label, repo_dir=None, repo_ref=None, recon_dir=No
         "schema": SCHEMA,
         "label": label, "kind": "code",
         "harness": meta.get("harness", "claude-code"),
-        "validation_scope": VALIDATION_SCOPE,
+        "validation_scope": CODE_VALIDATION_SCOPE,
+        "mark": mark,
         "transcript_sha256": meta["transcript_sha256"],
         "mechanistic": {
             "human_turns": sum(1 for s in segments if not s.get("pre_prompt")),
@@ -759,6 +1072,7 @@ def code_receipt(session_path, label, repo_dir=None, repo_ref=None, recon_dir=No
             "supporting_fields": {
                 "correction_segment_share_pct": round(100 * sum(origin_counts[s] for s in corr_segs) / total_final, 1) if total_final else None,
             },
+            "impact": impact,
             "blame_vs_memory_provenance_agreement_pct": round(100 * agree / blame_total, 1) if blame_total else None,
             "per_segment": per_segment,
             "per_file": [{"file": fp, "final_lines": sum(1 for l, _ in v if l.strip()),
@@ -768,11 +1082,46 @@ def code_receipt(session_path, label, repo_dir=None, repo_ref=None, recon_dir=No
         },
         "labels": {"semantic_weights": "none — rule-based categories only; no model calls",
                    "receipt_nature": "descriptive evidence, not a certified grade",
+                   "mark_semantics": "the mark names the process shape (how the work was steered), never its quality; it is not a grade",
                    "field_status": "headline_fields validated in spike; context_fields demoted (survival saturates on greenfield corpora); supporting_fields noisy, read jointly with turn count"},
     }
+    if meta.get("session_origin"):
+        receipt["mechanistic"]["session_origin"] = meta["session_origin"]
+    if commitment:
+        receipt["commitment"] = _code_commitment(meta, recon_dir, repo_dir, repo_ref)
     return receipt
 
-# ---------------------------------------------------------------- doc receipt (as-is from spike, schema 1.0)
+def _code_commitment(meta, recon_dir, repo_dir, repo_ref):
+    """The hash-commitment block (specs/hash-commitment.md section 2),
+    computed in this same run from the same material the receipt was
+    derived from. The transcript hash reuses the parse-time bytes via
+    meta (the file is never re-read)."""
+    def git_in(repo, *args):
+        return subprocess.run(["git", "-C", str(repo), *args],
+                              capture_output=True, text=True).stdout.strip()
+    block = {"algorithm": "sha256",
+             "transcript_sha256": meta["transcript_sha256"],
+             "repo_head_sha": git_in(recon_dir, "rev-parse", "HEAD")}
+    if repo_dir:
+        ref = repo_ref or "HEAD"
+        seed_sha = git_in(repo_dir, "rev-parse", f"{ref}^{{commit}}")
+        if re.fullmatch(r"[0-9a-f]{40}", seed_sha or ""):
+            block["seed_repo_head_sha"] = seed_sha
+        # else: the seed source does not resolve to a commit (e.g. a
+        # plain directory of files); the field is omitted, never
+        # emitted empty.
+    artifact = {}
+    listing = git_in(recon_dir, "ls-tree", "-r", "--name-only", "HEAD")
+    for rel in listing.splitlines():
+        if not rel:
+            continue
+        data = subprocess.run(["git", "-C", str(recon_dir), "cat-file", "blob",
+                               f"HEAD:{rel}"], capture_output=True).stdout
+        artifact[rel] = hashlib.sha256(data).hexdigest()
+    block["artifact_file_sha256"] = artifact
+    return block
+
+# ---------------------------------------------------------------- doc receipt (provider-based since v1.4)
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 
 def split_sentences(text):
@@ -791,70 +1140,94 @@ def split_sentences(text):
             if s: sents.append(s)
     return sents
 
-def doc_receipt(repo_dir, rel_path, label):
-    repo = Path(repo_dir)
-    def git(*args):
-        return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True).stdout
-    shas = git("log", "--follow", "--reverse", "--pretty=format:%H", "--", rel_path).split()
-    versions = []
-    for sha in shas:
-        txt = git("show", f"{sha}:{rel_path}")
-        versions.append((sha[:8], txt))
-    if not versions:
-        raise SystemExit(f"no git history for {rel_path} in {repo}")
-    final = versions[-1][1]
-    sections = []
-    cur_title, cur_lines = "(preamble)", []
-    for line in final.splitlines():
-        m = re.match(r"^(#{1,3})\s+(.*)", line)
-        if m:
-            if cur_lines or cur_title != "(preamble)": sections.append((cur_title, cur_lines))
-            cur_title, cur_lines = m.group(2).strip(), [line]
-        else: cur_lines.append(line)
-    sections.append((cur_title, cur_lines))
-    first_lines = Counter(l for l in versions[0][1].splitlines() if l.strip())
-    out_sections = []
-    for title, lines in sections:
-        nb = [l for l in lines if l.strip()]
-        if not nb: continue
-        survived = sum(1 for l in nb if first_lines.get(l, 0) > 0)
-        intro_rev = Counter()
-        for l in set(nb):
-            for vi, (_, vtxt) in enumerate(versions):
-                if l in vtxt.splitlines(): intro_rev[vi] += 1; break
-        out_sections.append({
-            "section": title, "final_lines": len(nb),
-            "pct_unchanged_from_first_version": round(100 * survived / len(nb), 1),
-            "pct_introduced_after_first_version": round(100 * (len(nb) - survived) / len(nb), 1),
-            "introduced_by_revision": {f"rev{i+1} ({versions[i][0]})": c for i, c in sorted(intro_rev.items())},
-        })
-    total_nb = sum(s["final_lines"] for s in out_sections)
-    survived_total = sum(round(s["final_lines"] * s["pct_unchanged_from_first_version"] / 100) for s in out_sections)
-    first_sentences = set(split_sentences(versions[0][1]))
-    final_sentences = split_sentences(final)
-    unchanged_sentence_share = (round(100 * sum(1 for s in final_sentences if s in first_sentences) / len(final_sentences), 1)
-                                if final_sentences else None)
-    return {
-        "schema": SCHEMA, "label": label, "kind": "document",
-        "harness": "git",
-        "validation_scope": VALIDATION_SCOPE,
-        "source": f"{repo} :: {rel_path}", "revisions": len(versions),
-        "revision_count": len(versions),
-        "revision_shas": [s for s, _ in versions],
-        "final_nonblank_lines": total_nb,
-        "overall_pct_unchanged_from_first_version": round(100 * survived_total / total_nb, 1) if total_nb else None,
-        "unchanged_sentence_share_pct": unchanged_sentence_share,
-        "per_section": out_sections,
-        "labels": {"method": "git log --follow versions; exact-line provenance per section (conservative: any edit marks the line rewritten)",
-                   "receipt_nature": "descriptive evidence, not a certified grade"},
-    }
+def doc_receipt_provider(provider_name, label, *, repo=None, path=None,
+                         file_id=None, folder=None, section_strategy="auto",
+                         commitment=False, transport=None):
+    """Document receipt from any history provider (v1.4).
+
+    The provider answers one question (what are the artifact's
+    snapshots, oldest first); doc_join does the math, once, for every
+    source. `transport` is the gdrive-doc fixture seam, threaded through
+    for tests; the CLI never passes it.
+    """
+    from doc_join import doc_join
+    from providers import ArtifactRef, get_provider
+    from providers.gdrive_doc import GDriveDocProvider
+    if provider_name == "gdrive-doc" and transport is not None:
+        prov = GDriveDocProvider(transport=transport)
+    else:
+        prov = get_provider(provider_name)
+    if provider_name == "git":
+        locator, source = f"{repo}::{path}", f"{repo} :: {path}"
+    elif provider_name == "folder":
+        locator, source = str(folder), f"folder :: {folder}"
+    elif provider_name == "gdrive-doc":
+        locator, source = str(file_id), f"gdrive-doc :: {file_id}"
+    else:
+        locator, source = str(repo or path or file_id or folder), str(repo or path or file_id or folder)
+    ref = ArtifactRef(provider_name, locator)
+    meta = prov.describe(ref)
+    snaps = prov.snapshots(ref)
+    if not snaps:
+        raise SystemExit(f"no history for {source} via provider {provider_name}")
+    versions = [(s.id, s.content()) for s in snaps]
+    receipt = doc_join(versions, label=label, source=source,
+                       provider=provider_name,
+                       history_complete=meta.history_complete,
+                       section_strategy=section_strategy,
+                       authors=[s.author for s in snaps])
+    if commitment:
+        receipt["commitment"] = _doc_commitment(provider_name, versions,
+                                                 repo=repo, path=path)
+    return receipt
+
+def _doc_commitment(provider_name, versions, *, repo=None, path=None):
+    """Revision content hashes (specs/hash-commitment.md section 2/3).
+    Git: over the stored blob bytes (git cat-file), never the join's
+    text-decoded content. Other providers: over the snapshot text as
+    UTF-8, the only byte string those sources define."""
+    digests = []
+    if provider_name == "git":
+        for sid, _txt in versions:
+            data = subprocess.run(["git", "-C", str(repo), "cat-file", "blob",
+                                   f"{sid}:{path}"], capture_output=True).stdout
+            digests.append(hashlib.sha256(data).hexdigest())
+    else:
+        for _sid, txt in versions:
+            digests.append(hashlib.sha256(txt.encode("utf-8")).hexdigest())
+    return {"algorithm": "sha256",
+            "revision_content_sha256": digests,
+            "final_content_sha256": digests[-1] if digests else None}
+
+def doc_receipt(repo_dir, rel_path, label, **kw):
+    """The git doc path, kept at its v1 signature: doc_receipt(repo,
+    path, label) is the interface the CLI's default UX and the plugin
+    era tests use. Extra keyword arguments (section_strategy,
+    commitment) pass through to doc_receipt_provider."""
+    return doc_receipt_provider("git", label, repo=repo_dir, path=rel_path, **kw)
 
 # ---------------------------------------------------------------- rendering
 def render_md(r):
     lines = [f"# STEERING.md — {r['label']} ({r['kind']})", "",
              f"_Schema {r['schema']}. Descriptive evidence, not a certified grade. Counts and categories only; no prompt text._",
              f"_Harness: {r.get('harness')}._",
-             f"_Validation scope: {r['validation_scope']}_", ""]
+             f"_Validation scope: {r['validation_scope']}_"]
+    if r.get("commitment"):
+        c = r["commitment"]
+        if r["kind"] == "code":
+            line = (f"- Commitment (sha256): transcript {c['transcript_sha256'][:12]}…, "
+                    f"reconstructed HEAD {c['repo_head_sha'][:12]}…")
+            if c.get("seed_repo_head_sha"):
+                line += f", seed repo {c['seed_repo_head_sha'][:12]}…"
+            lines.append(line + ". Reveal the material to verify.")
+        else:
+            lines.append(f"- Commitment (sha256): final content {c['final_content_sha256'][:12]}…, "
+                         f"{len(c['revision_content_sha256'])} revision content hashes. "
+                         "Reveal the material to verify.")
+    if r.get("mark"):
+        lines.append(f"- Steering mark: **{r['mark']['category']}**. {r['mark']['basis']}. "
+                     "The mark names the process shape, not a grade.")
+    lines.append("")
     if r["kind"] == "code":
         m, g = r["mechanistic"], r["git_join"]
         c = m["coverage"]
@@ -871,18 +1244,28 @@ def render_md(r):
                   f"- Share of HEAD that is pre-existing (seeded from repo): {g['headline_fields']['preexisting_share_pct']}%",
                   f"- First-segment survival into HEAD (context; saturates on greenfield corpora): {g['context_fields']['first_segment_survival_pct']}%",
                   f"- Share of HEAD from correction / after-error segments (supporting; noisy, read with turn count): {g['supporting_fields']['correction_segment_share_pct']}%",
-                  f"- Blame vs in-memory provenance agreement: {g['blame_vs_memory_provenance_agreement_pct']}%",
+                  f"- Blame vs in-memory provenance agreement: {g['blame_vs_memory_provenance_agreement_pct']}%"]
+        if g.get("impact"):
+            im = g["impact"]
+            lines += [f"- Impact classes (measured effect from line provenance, never prompt wording): {im['procedural_turns']} procedural, {im['continuation_turns']} continuation, {im['reshaping_turns']} reshaping ({im['reshaping_lines']} earlier lines rewritten), {im['unmeasured_segments']} unmeasured, {im['redirect_segments']} redirect",
+                      f"- Impact scope: {im['scope']}"]
+        lines += [
                   "", "## Per-segment attribution", "",
                   "| segment | prompt chars | correction? | after error? | ops | lines introduced | lines surviving to HEAD |",
                   "|---|---|---|---|---|---|---|"]
         if "patch_calls" in c:
-            lines.insert(len(lines) - 15, f"- Codex channels: {c['patch_calls']} apply_patch calls ({c['patch_calls_failed']} failed and dropped whole, {c['patch_calls_unresolved']} unresolved), {c['patch_file_ops_parsed']} patch file ops in the join ({c['patch_hunks_parsed']} hunks parsed, {c['patch_hunks_unparsed']} hunks unparsed, {c['patch_file_ops_failed']} file ops inside failed patches), shell writes extracted {c['shell_writes_extracted']}, shell writes unparsed {c['shell_writes_unparsed']} (counted, never guessed into the join).")
+            cov_idx = next(i for i, l in enumerate(lines) if l.startswith("- Coverage:"))
+            lines.insert(cov_idx + 1, f"- Codex channels: {c['patch_calls']} apply_patch calls ({c['patch_calls_failed']} failed and dropped whole, {c['patch_calls_unresolved']} unresolved), {c['patch_file_ops_parsed']} patch file ops in the join ({c['patch_hunks_parsed']} hunks parsed, {c['patch_hunks_unparsed']} hunks unparsed, {c['patch_file_ops_failed']} file ops inside failed patches), shell writes extracted {c['shell_writes_extracted']}, shell writes unparsed {c['shell_writes_unparsed']} (counted, never guessed into the join).")
         for s in g["per_segment"]:
             seg = "pre-existing" if s["segment"] == PREEXISTING else str(s["segment"])
             lines.append(f"| {seg} | {s['prompt_chars']} | {'yes' if s['correction_keyword'] else '—'} | {'yes' if s['after_error'] else '—'} | {s['edit_write_ops']} | {s['lines_introduced_gross']} | {s['lines_surviving_to_head']} |")
     else:
         rev_count = r.get("revision_count", r["revisions"])
-        lines += [f"- Revisions in git history: {r['revisions']} ({', '.join(r['revision_shas'])})",
+        if r.get("provider"):
+            lines.append(f"- History provider: {r['provider']} (history complete: {r.get('history_complete')}; section strategy: {r.get('section_strategy')})")
+        if r.get("authors"):
+            lines.append(f"- Authors: {', '.join(r['authors'])}")
+        lines += [f"- Revisions{' in git history' if r.get('provider') in (None, 'git') else ''}: {r['revisions']} ({', '.join(r['revision_shas'])})",
                   f"- Final size: {r['final_nonblank_lines']} non-blank lines",
                   f"- Unchanged from first committed version: **at least {r['overall_pct_unchanged_from_first_version']}%** of the final text survives verbatim from the first version (a floor, computed over {rev_count} revisions: the exact-line rule only ever marks a line rewritten, so finer revision granularity only lowers this number)"]
         if r.get("unchanged_sentence_share_pct") is not None:
@@ -897,9 +1280,34 @@ def render_md(r):
     return "\n".join(lines)
 
 # ---------------------------------------------------------------- CLI
+def _infer_doc_provider(provider_arg, repo_arg, path_arg):
+    """Resolve the doc provider from the reference. Returns
+    (provider_name, ref) where ref is (repo, path) for git, (folder,)
+    for folder, (file_id,) for gdrive-doc. An explicit --provider wins;
+    a `scheme:` prefix on the reference is honoured; otherwise a
+    document path means git (the default UX since v1), a directory
+    means folder, and anything else is treated as a Drive file id."""
+    if repo_arg:
+        for scheme in ("git", "gdrive-doc", "folder"):
+            if repo_arg.startswith(scheme + ":") and not Path(repo_arg).exists():
+                provider_arg = provider_arg or scheme
+                repo_arg = repo_arg[len(scheme) + 1:]
+                break
+    if provider_arg == "git":
+        return "git", (repo_arg, path_arg)
+    if provider_arg == "folder":
+        return "folder", (repo_arg,)
+    if provider_arg == "gdrive-doc":
+        return "gdrive-doc", (repo_arg,)
+    if path_arg is not None:
+        return "git", (repo_arg, path_arg)
+    if repo_arg and Path(repo_arg).is_dir():
+        return "folder", (repo_arg,)
+    return "gdrive-doc", (repo_arg,)
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="steering_receipt",
-                                 description="proof-of-steer v1 — emit a steering receipt (JSON + STEERING.md) from a coding-agent transcript or a git-carried document. Local only; receipts never contain prompt text.")
+                                 description="Proof of Steering v1 — emit a steering receipt (JSON + STEERING.md) from a coding-agent transcript or a git-carried document. Local only; receipts never contain prompt text.")
     sub = ap.add_subparsers(dest="cmd", required=True)
     pc = sub.add_parser("code", help="receipt from a coding-agent session JSONL (Claude Code or Codex rollout)")
     pc.add_argument("session", help="path to the session .jsonl transcript")
@@ -910,9 +1318,15 @@ def main(argv=None):
     pc.add_argument("--repo-ref", default=None, help="seed bases from this git ref in --repo (git show REF:<path>) instead of the working tree; use the commit the session ran against for session-time content")
     pc.add_argument("--out", default="receipts-out", help="output directory for <label>.receipt.json and <label>.STEERING.md (default: receipts-out)")
     pc.add_argument("--recon-dir", default=None, help="where to materialise the reconstructed git repo (default: <out>/reconstructed-<label>)")
-    pd = sub.add_parser("doc", help="receipt from a markdown document's git history")
-    pd.add_argument("repo", help="git repo directory containing the document")
-    pd.add_argument("path", help="document path relative to the repo root")
+    pc.add_argument("--commitment", action="store_true", help="emit the hash-commitment block (specs/hash-commitment.md): hashes of the exact material this receipt was derived from, computed in this run; replay commit dates are pinned so the reconstructed HEAD is reproducible")
+    pd = sub.add_parser("doc", help="receipt from a document's history, via a history provider (git by default)")
+    pd.add_argument("repo", help="git repo directory containing the document; with --provider folder, the folder of versioned files; with --provider gdrive-doc, the Drive file id")
+    pd.add_argument("path", nargs="?", default=None, help="document path relative to the repo root (git provider only)")
+    pd.add_argument("--provider", choices=["git", "gdrive-doc", "folder"], default=None,
+                    help="history provider (default: inferred from the reference: git when a document path is given, folder when the reference is a directory of versioned files, gdrive-doc when it is a bare file id)")
+    pd.add_argument("--section-strategy", choices=["auto", "markdown", "heuristic", "whole"], default="auto",
+                    help="how the final version is sectioned (default auto: markdown markers, else conservative heading-like detection with >= 2 candidates, else one whole-document section)")
+    pd.add_argument("--commitment", action="store_true", help="emit the hash-commitment block (specs/hash-commitment.md): SHA-256 of each revision's content, computed in this run")
     pd.add_argument("--label", required=True, help="receipt label (file names + receipt label field)")
     pd.add_argument("--out", default="receipts-out", help="output directory (default: receipts-out)")
     args = ap.parse_args(argv)
@@ -923,21 +1337,50 @@ def main(argv=None):
     if args.cmd == "code":
         recon = Path(args.recon_dir) if args.recon_dir else out_dir / f"reconstructed-{args.label}"
         r = code_receipt(args.session, args.label, repo_dir=args.repo,
-                         repo_ref=args.repo_ref, recon_dir=recon, fmt=args.format)
+                         repo_ref=args.repo_ref, recon_dir=recon, fmt=args.format,
+                         commitment=args.commitment)
     else:
-        r = doc_receipt(args.repo, args.path, args.label)
+        from providers import ProviderUnavailable
+        provider_name, ref = _infer_doc_provider(args.provider, args.repo, args.path)
+        try:
+            if provider_name == "git":
+                if ref[1] is None:
+                    ap.error("the git provider needs a document path: doc REPO PATH")
+                r = doc_receipt_provider("git", args.label, repo=ref[0], path=ref[1],
+                                         section_strategy=args.section_strategy,
+                                         commitment=args.commitment)
+            elif provider_name == "folder":
+                r = doc_receipt_provider("folder", args.label, folder=ref[0],
+                                         section_strategy=args.section_strategy,
+                                         commitment=args.commitment)
+            else:
+                r = doc_receipt_provider("gdrive-doc", args.label, file_id=ref[0],
+                                         section_strategy=args.section_strategy,
+                                         commitment=args.commitment)
+        except ProviderUnavailable as e:
+            ap.error(f"provider unavailable: {e}")
     (out_dir / f"{args.label}.receipt.json").write_text(json.dumps(r, indent=1), encoding="utf-8")
     (out_dir / f"{args.label}.STEERING.md").write_text(render_md(r), encoding="utf-8")
     summary = {"label": r["label"], "kind": r["kind"], "schema": r["schema"],
                "receipt_json": str(out_dir / f"{args.label}.receipt.json"),
                "steering_md": str(out_dir / f"{args.label}.STEERING.md")}
+    if r.get("mark"):
+        summary["mark"] = r["mark"]["category"]
+    if r.get("commitment"):
+        summary["commitment"] = True
     if r["kind"] == "code":
         summary.update({"human_turns": r["mechanistic"]["human_turns"],
                         "coverage": r["mechanistic"]["coverage"],
+                        "impact": {k: r["git_join"]["impact"][k] for k in
+                                   ("procedural_turns", "continuation_turns", "reshaping_turns",
+                                    "unmeasured_segments", "reshaping_share_pct",
+                                    "reshaping_lines", "redirect_segments")},
                         "post_first_prompt_share_pct": r["git_join"]["headline_fields"]["post_first_prompt_share_pct"],
                         "agreement_pct": r["git_join"]["blame_vs_memory_provenance_agreement_pct"]})
     else:
-        summary.update({"revisions": r["revisions"],
+        summary.update({"provider": r.get("provider"),
+                        "history_complete": r.get("history_complete"),
+                        "revisions": r["revisions"],
                         "revision_count": r.get("revision_count"),
                         "overall_unchanged_pct": r["overall_pct_unchanged_from_first_version"],
                         "unchanged_sentence_share_pct": r.get("unchanged_sentence_share_pct"),
