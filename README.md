@@ -63,14 +63,31 @@ What the samples in [examples/](examples/) show:
 python3 steering_receipt.py doc path/to/repo docs/plan.md --label plan
 ```
 
-Doc mode walks the file's committed revisions and maps, per section, what survives verbatim from the first version and what each later revision introduced.
+Doc mode walks the document's revision history and maps, per section, what survives verbatim from the first version and what each later revision introduced. The history comes from a provider: git by default, a Google Doc through the Drive connector export, or a folder of versioned files. The receipt records the provider, whether the history it saw was complete, and the authors it lists.
 
 The sample (`doc-steered-findings-draft`) covers 3 revisions of a research findings draft and 242 nonblank lines in its final version: **at least 36.0%** of the final text survives verbatim from the first version. The per-section map is where the story is: the phase one sections are 100% first draft, the cost estimate section first appears in revision 2, and every phase two section arrives in revision 3.
+
+### More flags
+
+```bash
+# bind a receipt to its exact source material with SHA-256 hashes (both modes)
+python3 steering_receipt.py code path/to/session.jsonl --label my-session --commitment
+python3 steering_receipt.py doc path/to/repo docs/plan.md --label plan --commitment
+
+# choose a history provider and a sectioning strategy (doc mode)
+python3 steering_receipt.py doc path/to/folder --label plan --provider folder --section-strategy auto
+
+# draw the steering mark of any receipt as a small badge for a pull request or README
+python3 steering_viz.py my-session.receipt.json --badge -o badge.svg
+```
+
+`--section-strategy` is `auto` by default: markdown headings when the text carries them, a conservative heading detection when it does not, and one whole-document section when neither applies. The strategy that ran is recorded on the receipt.
 
 ## What the receipt fields mean
 
 Plain-word version. The full field-by-field contract is [SCHEMA.md](SCHEMA.md) (schema id `proof-of-steering/receipt@1.0`).
 
+- **Steering mark**: one of four words at the top of every receipt: One-shot, Prompted, Steered, or Closely steered. The mark is computed from the presence-level fields only. For code it counts how many turns reshaped earlier work. For documents it looks at how the later revisions treated the first version. It names the shape of the process, and it is not a grade: it says nothing about how good the artifact is, and one-shot work can be exactly right.
 - **Human turns**: genuine human prompts, with injected system records filtered out. The basic unit of steering.
 - **Post-first-prompt share** (code): the share of shipped lines whose origin is a segment after the first artifact-producing one. 0% means the shipped artifact is the first prompt's output, untouched in origin. This is the headline field.
 - **Per-segment and per-file attribution** (code): which turns and which files the surviving lines came from, including how much came from correction and after-error segments.
@@ -108,7 +125,7 @@ proof-of-steer is private by construction, not by policy. Everything runs on you
 
 A session transcript is radioactive. It holds your code, your other projects, your half-formed thinking, and whatever you pasted at 1am. You could share it to prove you steered, the same way you could prove your identity by handing over your private key. Nobody sane does either. The receipt is derived from that private material and is safe to publish for the same reason a public key is. It carries counts, categories, file names, and line attributions, and never prompt text, tool arguments, or file contents. Anyone can check every claim on it without seeing the session it came from. Sharing is per artifact and sender-controlled. You publish a receipt for this pull request and everything else stays private.
 
-One honest break in the analogy, stated plainly. A public key is unforgeable and a receipt is not. It is descriptive evidence, not a cryptographic proof, and a determined faker can manufacture one. Part of that gap is specified to close. A hash commitment, computed at generation time and carried in the receipt, binds it to the exact transcript and repo state it was derived from. Commit now, reveal only if challenged. If a claim is ever disputed, the sender reveals the material and anyone can verify the receipt was honestly derived from it rather than written after the fact. The commitment is specified in the schema and arrives in the next build. Until then, share the receipt, keep the session.
+One honest break in the analogy, stated plainly. A public key is unforgeable and a receipt is not. It is descriptive evidence, not a cryptographic proof, and a determined faker can manufacture one. Part of that gap closes with `--commitment`. Run with that flag, the receipt carries SHA-256 hashes of the exact transcript and repo state it was derived from, computed in the same run. Commit now, reveal only if challenged. If a claim is ever disputed, the sender reveals the material and anyone can verify the receipt was honestly derived from it rather than written after the fact. Share the receipt, keep the session.
 
 ## Tests
 
@@ -116,7 +133,7 @@ One honest break in the analogy, stated plainly. A public key is unforgeable and
 python3 -m unittest discover -s tests
 ```
 
-Thirteen tests, standard library only, including fixtures that pin the seeding behavior, the sentence-share computation, the floor wording on rendered receipts, and the Codex adapter.
+Thirty-six tests, standard library only, including fixtures that pin the seeding behavior, the sentence-share computation, the floor wording on rendered receipts, the Codex adapter, the provider registry and fixture histories, the impact classification, the steering mark boundaries, and the hash-commitment round trip.
 
 ## License
 
