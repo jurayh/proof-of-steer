@@ -153,12 +153,12 @@ a{color:var(--first)}
         <rect x="26" y="182" width="168" height="7" rx="3.5" fill="#dde4ea"/>
         <rect x="26" y="196" width="120" height="7" rx="3.5" fill="#dde4ea"/>
       </g>
-      <line x1="216" y1="67" x2="330" y2="104" stroke="#5c6b7a" stroke-width="1.6" marker-end="url(#arr1)"/>
-      <line x1="216" y1="173" x2="330" y2="136" stroke="#5c6b7a" stroke-width="1.6" marker-end="url(#arr1)"/>
+      <line x1="216" y1="67" x2="420" y2="94" stroke="#5c6b7a" stroke-width="1.6" marker-end="url(#arr1)"/>
+      <line x1="216" y1="173" x2="420" y2="110" stroke="#5c6b7a" stroke-width="1.6" marker-end="url(#arr1)"/>
       <g>
-        <circle cx="408" cy="96" r="17" fill="#eef2f5" stroke="#b9c4cf"/>
-        <circle cx="408" cy="90" r="6" fill="#5c6b7a"/>
-        <path d="M396 108 a12 9 0 0 1 24 0 z" fill="#5c6b7a"/>
+        <circle cx="441" cy="96" r="17" fill="#eef2f5" stroke="#b9c4cf"/>
+        <circle cx="441" cy="90" r="6" fill="#5c6b7a"/>
+        <path d="M429 108 a12 9 0 0 1 24 0 z" fill="#5c6b7a"/>
         <rect x="366" y="120" width="150" height="46" rx="9" fill="#ffffff" stroke="#b9c4cf"/>
         <text x="441" y="140" font-size="11" letter-spacing="1.5" fill="#5c6b7a" font-weight="700" text-anchor="middle">REVIEWER</text>
         <text x="441" y="158" font-size="11.5" fill="#5c6b7a" text-anchor="middle">How hard do I read this?</text>
@@ -333,14 +333,20 @@ python3 steering_receipt.py code path/to/session.jsonl --label my-session --repo
 </section>
 
 <section>
-  <h2>Honest limits, and privacy</h2>
+  <h2>Your transcript is the private key. The receipt is the public one.</h2>
+  <p>A session transcript is radioactive. It holds your code, your other projects, your half-formed thinking, and whatever you pasted at 1am. You could share it to prove you steered, the same way you could prove your identity by handing over your private key. Nobody sane does either.</p>
+  <p>proof-of-steer is <strong>private by construction, not by policy</strong>. Everything runs on your machine and nothing is uploaded anywhere. The receipt is derived from the private material and is safe to publish for the same reason a public key is. It carries counts, categories, file names, and line attributions, and never prompt text, tool arguments, or file contents. Anyone can check every claim on it without seeing the session it came from, and sharing is per artifact and sender-controlled. Publish a receipt for one pull request and everything else stays private.</p>
+  <p>One honest break in the analogy. A public key is unforgeable and a receipt is not. It is evidence, not a cryptographic proof, and a determined faker can manufacture one. Part of that gap is specified to close: a hash commitment, computed at generation time, binds the receipt to the exact transcript and repo state it was derived from. Commit now, reveal only if challenged. If a claim is ever disputed, the sender reveals the material and anyone can verify the receipt was honestly derived from it rather than written after the fact.</p>
+</section>
+
+<section>
+  <h2>Honest limits</h2>
   <ul>
     <li><strong>Presence, not dose.</strong> The headline field reliably detects that steering happened. It does not measure how much the steering was worth, and it saturates on long sessions. Do not read it as a score.</li>
     <li><strong>The doc-mode rejection blind spot.</strong> Revision history only shows what was written and later changed. Rejected suggestions and dismissed drafts never enter it, so doc-mode steering evidence is a lower bound on interaction. A quiet history does not prove a quiet process.</li>
     <li><strong>Per-harness numbers do not pool.</strong> Pushback and survival rates differ sharply by agent harness. In SWE-chat, pushback runs 21% for one agent to 60% for another. Receipts carry a <code>harness</code> field, and context fields should only be compared within one harness.</li>
     <li><strong>Reconstruction is partial.</strong> Edit replay can miss edits whose base it cannot establish. Coverage is printed on every receipt, so a thin receipt discounts itself.</li>
     <li><strong>The bound this design respects.</strong> Purdue and its paper Likelihood Is Not Authorship (arXiv:2610.19767) shows that transcript-only likelihood scores cannot certify who authored a text. This tool makes no authorship claim and computes no such probability. It counts observable events and reports them as evidence.</li>
-    <li><strong>Privacy.</strong> Everything runs on your machine. The transcript and the repo never leave it. Receipts contain counts, categories, file names, and line attributions only. They never contain prompt text, tool arguments, or file contents. Share the receipt, keep the session.</li>
   </ul>
 </section>
 
