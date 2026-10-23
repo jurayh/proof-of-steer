@@ -1,0 +1,4 @@
+# Status Notes
+The migration finished for the northern cluster.
+Dashboards stayed green through the weekend.
+The runbook gained a rollback appendix.

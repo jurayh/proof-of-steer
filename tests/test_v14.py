@@ -25,7 +25,19 @@ from pathlib import Path
 V1 = Path(__file__).resolve().parent.parent
 ROOT = V1.parent
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
-SPIKE_FIXTURES = ROOT / "gdocs-spike" / "fixtures"
+# The gdocs spike fixtures and the extensibility folder demo are vendored
+# into this repo (tests/fixtures/spike, tests/fixtures/demo_data) so the
+# shipped suite is hermetic; the vendored copies are canonical here.
+SPIKE_FIXTURES = FIXTURES / "spike"
+DEMO_DATA = FIXTURES / "demo_data"
+DEMO_RECEIPT = FIXTURES / "demo-folder.receipt.json"
+# Inherently workspace-bound material (private or too large to vendor):
+# the tests that need it skip cleanly when it is absent.
+PG_REPO = Path.home() / "workspace" / "personal-guard"
+IMPACT_RESULTS = ROOT / "impact-spike" / "results.json"
+RECEIPTS_CODEX = ROOT / "receipts-codex"
+needs_pg = unittest.skipUnless(PG_REPO.exists(),
+                               "personal-guard workspace repo not present")
 sys.path.insert(0, str(V1))
 sys.path.insert(0, str(SPIKE_FIXTURES))
 import steering_receipt as sr
@@ -228,13 +240,14 @@ class TestHeadinglessFixtures(unittest.TestCase):
         self.assertEqual(r["unchanged_sentence_share_pct"], 60.0)
         self.assertEqual(r["final_nonblank_lines"], 5)
 
+    @needs_pg
     def test_heuristic_on_real_doc_with_markers_stripped(self):
         """The Personal-Guard findings draft, '#' markers removed (the
         Google-Docs-export shape): the heuristic must recover the
         section map the markdown strategy sees (17 of 18 headings;
         the 103-char title exceeds the length cap by design)."""
         import re as _re
-        repo = Path.home() / "workspace" / "personal-guard"
+        repo = PG_REPO
         final = subprocess.run(["git", "-C", str(repo), "show", "HEAD:FINDINGS_DRAFT.md"],
                                capture_output=True, text=True).stdout
         true_secs, _ = resolve_sections(final, "markdown")
@@ -261,8 +274,9 @@ class TestHeadinglessFixtures(unittest.TestCase):
         self.assertEqual([t for t, _ in secs if t != "(preamble)"], ["Only Heading"])
 
 class TestProviderParityAndFolder(unittest.TestCase):
+    @needs_pg
     def test_findings_draft_parity_through_providers(self):
-        repo = Path.home() / "workspace" / "personal-guard"
+        repo = PG_REPO
         r = sr.doc_receipt(repo, "FINDINGS_DRAFT.md", "v14-parity")
         self.assertEqual(r["provider"], "git")
         self.assertEqual(r["history_complete"], True)
@@ -278,7 +292,7 @@ class TestProviderParityAndFolder(unittest.TestCase):
         self.assertNotIn("commitment", r)
 
     def test_folder_provider_demo_number(self):
-        demo = ROOT / "extensibility" / "examples" / "demo_data"
+        demo = DEMO_DATA
         r = sr.doc_receipt_provider("folder", "v14-folder", folder=str(demo))
         self.assertEqual(r["provider"], "folder")
         self.assertEqual(r["history_complete"], True)
@@ -286,7 +300,7 @@ class TestProviderParityAndFolder(unittest.TestCase):
         self.assertEqual(r["revisions"], 3)
         self.assertEqual({s["section"]: s["pct_unchanged_from_first_version"] for s in r["per_section"]},
                          {"Field Notes": 100.0, "Alpha": 60.0, "Beta": 100.0, "Gamma": 0.0})
-        shipped = json.loads((ROOT / "extensibility" / "examples" / "demo-folder.receipt.json").read_text())
+        shipped = json.loads(DEMO_RECEIPT.read_text())
         self.assertEqual(r["final_nonblank_lines"], shipped["final_nonblank_lines"])
         self.assertEqual(r["unchanged_sentence_share_pct"], shipped["unchanged_sentence_share_pct"])
 
@@ -311,11 +325,19 @@ class TestProviderParityAndFolder(unittest.TestCase):
 # ================================================================ component 3: impact
 CC_DIR = Path.home() / "workspace/user/corpus/public/trace-commons/sessions/claude_code"
 CODEX_DIR = Path.home() / "workspace/user/corpus/public/codex-aletheia"
+needs_cc = unittest.skipUnless(CC_DIR.exists(),
+                               "trace-commons corpus sessions not present")
+needs_iceberg = unittest.skipUnless(CC_DIR.exists() and IMPACT_RESULTS.exists(),
+                                    "trace-commons corpus sessions or impact-spike results.json not present")
+needs_codex = unittest.skipUnless(
+    CODEX_DIR.exists() and IMPACT_RESULTS.exists() and RECEIPTS_CODEX.exists(),
+    "codex corpus sessions, impact-spike results.json, or receipts-codex not present")
 
 def corpus_file(d, prefix):
     return next(p for p in d.glob("*.jsonl") if p.name.startswith(prefix))
 
 class TestImpactRegression(unittest.TestCase):
+    @needs_iceberg
     def test_iceberg_impact_matches_spike_exactly(self):
         with tempfile.TemporaryDirectory() as tmp:
             r = sr.code_receipt(corpus_file(CC_DIR, "860618e1"), "v14-ice",
@@ -334,11 +356,12 @@ class TestImpactRegression(unittest.TestCase):
             self.assertIn("interactive Claude Code session", im["scope"])
             self.assertEqual(r["mark"]["category"], "Closely steered")
             classes = {s["segment"]: s["impact_class"] for s in g["per_segment"] if s["segment"] >= 0}
-            spike = json.loads((ROOT / "impact-spike" / "results.json").read_text())
+            spike = json.loads(IMPACT_RESULTS.read_text())
             want = {p["segment"]: p["class"] for p in spike["claude_code"]["860618e1"]["per_segment"]
                     if not p["pre_prompt"]}
             self.assertEqual(classes, want)
 
+    @needs_cc
     def test_control_reshaping_exactly_zero(self):
         with tempfile.TemporaryDirectory() as tmp:
             r = sr.code_receipt(corpus_file(CC_DIR, "4130c9a7"), "v14-ctl",
@@ -350,10 +373,11 @@ class TestImpactRegression(unittest.TestCase):
             self.assertEqual(r["git_join"]["headline_fields"]["post_first_prompt_share_pct"], 0.0)
             self.assertEqual(r["mark"]["category"], "One-shot")
 
+    @needs_codex
     def test_codex_spot_checks_against_shipped_receipts(self):
-        spike = json.loads((ROOT / "impact-spike" / "results.json").read_text())
+        spike = json.loads(IMPACT_RESULTS.read_text())
         labels = ["codex-019eee77052d"]
-        shipped0 = ROOT / "receipts-codex" / f"{labels[0]}.receipt.json"
+        shipped0 = RECEIPTS_CODEX / f"{labels[0]}.receipt.json"
         self.assertTrue(shipped0.exists())
         by_label = {}
         for p in CODEX_DIR.glob("*.jsonl"):
@@ -362,7 +386,7 @@ class TestImpactRegression(unittest.TestCase):
         picked = sorted(by_label)[:1] + sorted(by_label)[25:26] + sorted(by_label)[-1:]
         with tempfile.TemporaryDirectory() as tmp:
             for label in picked:
-                shipped = json.loads((ROOT / "receipts-codex" / f"{label}.receipt.json").read_text())
+                shipped = json.loads((RECEIPTS_CODEX / f"{label}.receipt.json").read_text())
                 r = sr.code_receipt(by_label[label], label, recon_dir=Path(tmp) / label)
                 self.assertEqual(r["mechanistic"]["human_turns"], shipped["mechanistic"]["human_turns"], label)
                 self.assertEqual(r["git_join"]["final_nonblank_lines"], shipped["git_join"]["final_nonblank_lines"], label)
@@ -482,15 +506,16 @@ class TestMarkBoundaries(unittest.TestCase):
             self.assertIn("STEERED", svg)
             self.assertIn("2 human turns", svg)
             self.assertNotIn("http://", svg.replace("http://www.w3.org/2000/svg", ""))
-            rd = sr.doc_receipt(Path.home() / "workspace" / "personal-guard",
-                                "FINDINGS_DRAFT.md", "v14-badge-doc")
+            out = subprocess.run([sys.executable, str(V1 / "steering_viz.py"),
+                                  "/dev/null", "--badge"], capture_output=True, text=True)
+            self.assertNotEqual(out.returncode, 0)  # not a receipt: refuses cleanly
+            if not PG_REPO.exists():
+                self.skipTest("personal-guard workspace repo not present")
+            rd = sr.doc_receipt(PG_REPO, "FINDINGS_DRAFT.md", "v14-badge-doc")
             svg2 = viz.badge_svg(rd)
             ET.fromstring(svg2)
             self.assertIn("CLOSELY STEERED", svg2)
             self.assertIn("3 revisions", svg2)
-            out = subprocess.run([sys.executable, str(V1 / "steering_viz.py"),
-                                  "/dev/null", "--badge"], capture_output=True, text=True)
-            self.assertNotEqual(out.returncode, 0)  # not a receipt: refuses cleanly
 
 # ================================================================ component 5: commitment
 def strip_volatile(d):
@@ -610,7 +635,7 @@ class TestDocCLIProviders(unittest.TestCase):
     def test_cli_folder_inference_and_git_default(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "out"
-            demo = ROOT / "extensibility" / "examples" / "demo_data"
+            demo = DEMO_DATA
             run = subprocess.run([sys.executable, str(V1 / "steering_receipt.py"), "doc",
                                   str(demo), "--label", "cli-folder", "--out", str(out)],
                                  capture_output=True, text=True)

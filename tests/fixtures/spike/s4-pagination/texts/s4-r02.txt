@@ -1,0 +1,3 @@
+# Running Log
+Log entry 01 records a quiet morning.
+Log entry 02 records a busy pier.

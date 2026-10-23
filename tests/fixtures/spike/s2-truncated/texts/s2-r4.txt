@@ -1,0 +1,4 @@
+# Status Notes
+The migration finished for the northern cluster.
+Dashboards flickered once during the deploy window.
+The runbook gained a rollback appendix.

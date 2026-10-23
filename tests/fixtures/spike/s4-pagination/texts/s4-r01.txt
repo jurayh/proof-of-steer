@@ -1,0 +1,2 @@
+# Running Log
+Log entry 01 records a quiet morning.
