@@ -255,6 +255,7 @@ a{color:var(--first)}
   <h2>The Steerprint</h2>
   <p>The Steerprint is the receipt drawn as a map, and it is made to be shared. For a code session it draws one block per human turn, sized by the lines that turn introduced, colored by kind, and hatched where those lines were later discarded. For a document it draws one bar per section, split between the first draft and what later revisions introduced.</p>
   <p>Read the sample like a reviewer. On the left, a steered session is a skyline of forty blocks in four colors. On the right, the one-prompt control is a single block, because nothing arrived after the first draft. Below, the findings draft shows its sections, the all-blue ones never touched again and the warm ones carrying judgment applied later.</p>
+  <p>When even the map is more than the moment allows, every receipt also carries a steering mark, one of four words: One-shot, Prompted, Steered, or Closely steered. The mark is the glanceable form of the receipt, the map in a single word. For code it is defined on measured reshaping, how many turns went back and changed earlier work. For documents it reads how the later revisions treated the first version. It names the shape of the process, not a grade: it says nothing about quality, and one-shot work can be exactly right.</p>
   <p><a href="steerprint.html"><strong>Open the sample Steerprint</strong></a> and hover or tap any block for its numbers.</p>
 </section>
 
@@ -300,6 +301,7 @@ a{color:var(--first)}
 python3 steering_receipt.py code path/to/session.jsonl --label my-session --repo path/to/repo --repo-ref &lt;commit&gt;</code></pre>
   <p>Output lands in <code>receipts-out/</code> as a receipt JSON plus a rendered STEERING.md. Draw any receipt as a Steerprint with:</p>
   <pre><code>python3 steering_viz.py my-session.receipt.json -o steerprint.html</code></pre>
+  <p>Run either mode with <code>--commitment</code> to bind the receipt to its source material with SHA-256 hashes, and draw the steering mark alone as a badge with <code>python3 steering_viz.py my-session.receipt.json --badge -o badge.svg</code>.</p>
 
   <h3>Doc mode: a document in git</h3>
   <pre><code>python3 steering_receipt.py doc path/to/repo docs/plan.md --label plan</code></pre>
@@ -336,7 +338,7 @@ python3 steering_receipt.py code path/to/session.jsonl --label my-session --repo
   <h2>Your transcript is the private key. The receipt is the public one.</h2>
   <p>A session transcript is radioactive. It holds your code, your other projects, your half-formed thinking, and whatever you pasted at 1am. You could share it to prove you steered, the same way you could prove your identity by handing over your private key. Nobody sane does either.</p>
   <p>proof-of-steer is <strong>private by construction, not by policy</strong>. Everything runs on your machine and nothing is uploaded anywhere. The receipt is derived from the private material and is safe to publish for the same reason a public key is. It carries counts, categories, file names, and line attributions, and never prompt text, tool arguments, or file contents. Anyone can check every claim on it without seeing the session it came from, and sharing is per artifact and sender-controlled. Publish a receipt for one pull request and everything else stays private.</p>
-  <p>One honest break in the analogy. A public key is unforgeable and a receipt is not. It is evidence, not a cryptographic proof, and a determined faker can manufacture one. Part of that gap is specified to close: a hash commitment, computed at generation time, binds the receipt to the exact transcript and repo state it was derived from. Commit now, reveal only if challenged. If a claim is ever disputed, the sender reveals the material and anyone can verify the receipt was honestly derived from it rather than written after the fact.</p>
+  <p>One honest break in the analogy. A public key is unforgeable and a receipt is not. It is evidence, not a cryptographic proof, and a determined faker can manufacture one. Part of that gap closes with the <code>--commitment</code> flag: the receipt then carries SHA-256 hashes of the exact transcript and repo state it was derived from, computed at generation time. Commit now, reveal only if challenged. If a claim is ever disputed, the sender reveals the material and anyone can verify the receipt was honestly derived from it rather than written after the fact.</p>
 </section>
 
 <section>
