@@ -44,6 +44,12 @@ Evolved from the spike prototype (../steering_join.py). Changes in v1:
     process shape, never a grade). `--commitment` on both subcommands
     emits the hash-commitment block specified in
     ../specs/hash-commitment.md.
+  - Demo subcommand (additive, schema stays receipt@1.0): `demo` runs
+    the same code_receipt pipeline on a small synthetic session
+    bundled in demo.py and additionally renders the badge and the
+    Steerprint map, so a first-time user sees every output form in
+    one run. The sample is synthetic and the demo says so in its own
+    output; its hand-computed receipt is asserted in tests.
   - Survival and correction-segment share are demoted to context /
     supporting fields, per the spike verdict; every receipt carries a
     validation_scope field.
@@ -58,6 +64,7 @@ Miscounting guards (from the exploration, kept):
 Usage:
   python3 steering_receipt.py code SESSION.jsonl --label L [--repo DIR [--repo-ref REF]] [--format auto|claude-code|codex] [--out DIR]
   python3 steering_receipt.py doc  REPO_DIR REL_MD_PATH --label L [--out DIR]
+  python3 steering_receipt.py demo [--out DIR]
 """
 import argparse, hashlib, json, os, re, shutil, subprocess, sys
 from collections import Counter
@@ -1329,9 +1336,14 @@ def main(argv=None):
     pd.add_argument("--commitment", action="store_true", help="emit the hash-commitment block (specs/hash-commitment.md): SHA-256 of each revision's content, computed in this run")
     pd.add_argument("--label", required=True, help="receipt label (file names + receipt label field)")
     pd.add_argument("--out", default="receipts-out", help="output directory (default: receipts-out)")
+    px = sub.add_parser("demo", help="run the pipeline on the bundled synthetic sample session and render a receipt, a badge, and a Steerprint map")
+    px.add_argument("--out", default="demo-out", help="output directory (default: demo-out)")
     args = ap.parse_args(argv)
     if args.cmd == "code" and args.repo_ref and not args.repo:
         ap.error("--repo-ref requires --repo")
+    if args.cmd == "demo":
+        from demo import run_demo
+        return run_demo(Path(args.out))
 
     out_dir = Path(args.out); out_dir.mkdir(parents=True, exist_ok=True)
     if args.cmd == "code":
