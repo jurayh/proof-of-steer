@@ -14,6 +14,10 @@ AI-produced pull requests and documents now arrive faster than anyone can read t
 
 The wedge is influence, not authorship. Tools that label lines as human-typed or agent-typed cannot separate a one-prompt artifact from a heavily steered one, because in an agent session the agent types nearly everything either way. Steering is the signal that separates them, and steering is what this measures. A receipt is descriptive evidence, never a certified grade.
 
+### Ask for the receipt in your template
+
+The habit forms where the pull request starts. [examples/pull-request-template.md](examples/pull-request-template.md) is a short section to paste into your project's pull request template: contributors who used an agent fill in their steering mark and attach the receipt, and everyone else deletes the section. This repo's own template carries the same section.
+
 ## For creators
 
 If you steer your agent hard, correcting, rejecting, and reshaping until the work is yours, a receipt is how that work becomes visible. Attach it to the pull request, the document, or the delivery. The map form of the receipt is called a Steerprint, and it is made to be shared.
