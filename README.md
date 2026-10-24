@@ -57,6 +57,10 @@ proof-of-steer demo
 
 The demo runs the full pipeline on a small synthetic session that ships with the tool and writes a receipt, a badge, and a Steerprint map into `demo-out`. One minute, no transcript of your own needed.
 
+![The proof-of-steer demo running in a terminal](assets/terminal-demo.gif)
+
+*The bundled demo in a terminal, from the command to the mark.*
+
 ![A steered session building up turn by turn](assets/steerprint-animated.gif)
 
 *The same session, building turn by turn. The one-prompt control never grows.*
