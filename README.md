@@ -49,6 +49,14 @@ pipx install proof-of-steer
 
 Or run it from a clone of this repo, where the commands below use `python3 steering_receipt.py` in place of `proof-of-steer`, and `python3 steering_viz.py` in place of `steerprint`. The two forms are the same tool.
 
+Try it on the bundled sample:
+
+```bash
+proof-of-steer demo
+```
+
+The demo runs the full pipeline on a small synthetic session that ships with the tool and writes a receipt, a badge, and a Steerprint map into `demo-out`. One minute, no transcript of your own needed.
+
 ![A steered session building up turn by turn](assets/steerprint-animated.gif)
 
 *The same session, building turn by turn. The one-prompt control never grows.*
