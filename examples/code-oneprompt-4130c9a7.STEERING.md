@@ -23,6 +23,9 @@ _Validation scope: Validated on trace-commons (28 sessions, full transcript-to-g
 - Blame vs in-memory provenance agreement: 100.0%
 - Impact classes (measured effect from line provenance, never prompt wording): 0 procedural, 1 continuation, 0 reshaping (0 earlier lines rewritten), 0 unmeasured, 0 redirect
 - Impact scope: Impact classes measure inter-segment rework. The segments of this receipt are the human's own typed inputs in an interactive Claude Code session, so reshaping reads as human steering: a later input changed what an earlier input produced.
+- Decisions (structured questions the agent asked and the user answered): 0 answered questions, of which 0 followed the marked recommendation (marked on 0 questions), 0 chose a different listed option, and 0 were answered in free text. 0 question calls were rejected as posed.
+- Decision coverage: 0 errored calls, 0 dismissed calls, 0 calls with unparseable recorded input, 0 unparseable answers.
+- Decision scope: Decision fields count the structured questions the agent asked and the user answered. Followed and diverged are defined only where the agent marked a recommended option, and decisions_with_recommendation is their denominator: agents mark inconsistently (4% of questions in one validated corpus, 40% in another). A listed pick on an unmarked question counts as diverged_to_listed and means only that the user chose among the offered options. Free-text answers mean the user left the offered options entirely. Sessions where the agent never asks have zero decision points, which says nothing about steering through ordinary turns.
 
 ## Per-segment attribution
 
