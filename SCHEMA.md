@@ -100,6 +100,7 @@ the in-memory line provenance.
 | `git_join.blame_vs_memory_provenance_agreement_pct` | float\|null | — | Agreement between `git blame` attribution and in-memory provenance over HEAD lines. Below ~95% means the reconstruction itself is suspect. |
 | `git_join.impact` | object | headline (v1.4) | Effect-based segment classification (see the impact section below): `procedural_turns`, `continuation_turns`, `reshaping_turns`, `unmeasured_segments`, `reshaping_share_pct`, `reshaping_lines`, `redirect_segments`, `method`, and `scope` (the scope label keyed to the segment source). |
 | `decisions` | object | supporting (decisions adoption) | Structured questions the agent asked and the user answered (AskUserQuestion events; see the decision points section below): `decision_points`, `decisions_with_recommendation`, `followed_recommendation`, `diverged_to_listed`, `free_text_answers`, `rejected_decision_calls`, a `coverage` object (errored, dismissed, and input-unparseable calls, plus unparseable answers), `method`, and `scope`. Code receipts only. |
+| `capture` | object | supporting (capture adoption) | Capture-time steering records read from the repo's git notes under `refs/notes/steer` (see the capture section below): the coverage split `captured_segments`, `inferred_segments`, and `unmeasured_segments` over `segments_total`, plus `commits_with_records`, `session_match`, a `verification` object with the tier and per-tier counts, a `per_segment` list marking each segment's origin, `method`, and `scope`. Present only when a capture repo is in play (the CLI passes `--repo` by default, or `--capture-repo` explicitly). Never present on receipts built without one, and never on document receipts. Codex receipts carry the block as zeros with a scope note, because capture records are written from Claude Code sessions in this build. |
 | `mechanistic.session_origin` | object | context (v1.4, Codex only) | The rollout's `session_meta` origin metadata, `originator` and `source` (for example `codex_exec` / `exec` for unattended runs). Keys the impact scope label; absent when the rollout carries none. |
 | `git_join.per_segment[]` | array | headline | One row per segment: `segment` (index; −1 = pre-existing seed pseudo-segment, with `kind` set), `prompt_chars` (length only, never text), `correction_keyword`, `after_error`, `rubber_stamp`, `edit_write_ops`, `lines_introduced_gross`, `lines_surviving_to_head`. Human-segment rows add (v1.4) `impact_class`, `redirect`, and `overlap_earlier_lines`. |
 | `git_join.per_file[]` | array | headline | Up to 15 largest files at HEAD: `file`, `final_lines`, `first_segment_share_pct`, `preexisting_share_pct`. |
@@ -315,6 +316,172 @@ counter-questions all land there) and reliably mean only that the
 user left the menu. Taking the recommended option is not proof of
 passivity, and diverging is not proof that the choice changed the
 artifact.
+
+### Capture-time steering records (capture adoption)
+
+Everything above this section is reconstructed after the fact: the
+transcript is replayed, one commit per segment is rebuilt, and line
+provenance is joined against git blame. That join is inference, and
+the receipts say so. Capture is the opposite direction. At commit
+time, while the session is live or just finished, the tool writes a
+steering record as the commit's git note under `refs/notes/steer`,
+stating which segments landed in that commit and what each segment
+measurably did. A later receipt then separates captured segments
+from inferred ones and prints the split always.
+
+The record format (schema id
+`proof-of-steering/steering-record@0.1-spike`, frozen by the
+capture spike and unchanged by this adoption):
+
+| Field | Meaning |
+|---|---|
+| `schema` | Always `proof-of-steering/steering-record@0.1-spike`. |
+| `commit` | The commit the record is anchored to. A record claims its segments only for the commit named here. |
+| `harness` | The harness the session ran in (`claude-code` in this build). |
+| `captured_at` | UTC timestamp of the attach that wrote the record. |
+| `tool` | The tool and version that wrote the record. |
+| `segments[]` | One entry per recorded human-turn segment: `turn` (the segment index in the transcript), `impact_class`, `redirect`, and `overlap_earlier_lines` (the same effect-based classification the receipt computes, measured at capture time), `decisions` (decision entries in the shape below), `hunks` (the spans below), and `transcript_sha256` (the SHA-256 of that segment's raw transcript bytes). |
+
+A segment's `decisions` entries mirror the receipt's decision
+classification at capture time: each entry carries a `status`, and
+answered entries carry `questions`, one per question, each with a
+`class` (one of followed_recommendation, diverged_to_listed,
+free_text, unparseable) and `with_recommendation` (whether the agent
+marked a recommended option). Only the class and the flag are
+stored. The classifier computes the chosen answer text and the
+recorder discards it before writing.
+
+A segment's `hunks` entries carry `file`, `start`, and `lines` for
+the new side of the commit's diff, and `removed_start` and
+`removed_lines` for the old side, in the span conventions of
+`git diff -U0`: a side with zero lines names the line before the
+span. Hunk attribution at attach time is deliberately conservative.
+Additions are claimed only for segments the session replay assigns
+the surviving lines to, removals only where a segment's replay
+removed the same line text, and anything else in the diff (hand
+edits, other sessions, pre-existing content) is claimed by nobody.
+Records under-claim rather than over-claim.
+
+Privacy, absolute: a record holds ids, hashes, counts, timestamps,
+and line spans only. Never transcript text, never prompt text, never
+file contents, never question or answer text. The one string from
+the work itself is a file path in a hunk entry, and that path is
+already in the commit the record rides on.
+
+#### The capture block on code receipts
+
+The block is emitted only when a capture repo is in play, so
+receipts built without one are exactly as before. Its fields:
+`method`, `segments_total` (the receipt's human segments),
+`captured_segments`, `inferred_segments`, and `unmeasured_segments`
+(the coverage split, which always sums to `segments_total` and is
+always printed, in the block and in STEERING.md),
+`commits_with_records` (commits carrying a note under
+`refs/notes/steer`), `session_match`, `verification` (below),
+`per_segment` (one row per human segment: `origin`, one of captured,
+inferred, or unmeasured, and for captured rows the `commit` and the
+`impact_class_recorded`, printed beside the receipt's own inferred
+class and never substituted for it), and `scope`. If the capture
+analysis itself fails, the block carries the zero counts plus a
+`capture_error` string rather than failing the receipt.
+
+A segment counts as captured only when all three hold: a record
+claims its turn, the record is anchored to the commit that carries
+it (and that commit is in the receipt repo's current history), and
+the recorded segment hash equals the hash of this transcript's
+segment bytes. Counting is per segment, so a receipt can mix
+captured and inferred segments from one session recorded across
+several commits.
+
+#### The two verification tiers
+
+Verification language keeps two tiers distinct, in this schema, in
+STEERING.md, and in the notes-only receipt. The tiers are never
+blurred, and the tier a receipt or record set carries is always the
+strongest tier whose checks all pass.
+
+- **Verified against the transcript.** The segment hashes were
+  recomputed from the held transcript bytes and matched, the
+  recorded classes were compared against a full replay of the
+  transcript, and the recorded hunks were checked against the
+  commit diffs. This tier needs the transcript, which is the
+  private material: it never leaves the machine, and the receipt
+  travels without it.
+- **Verified against the commit.** Only the diff-side checks ran:
+  the records parse, their anchors name the commits that carry
+  them, no segment is claimed twice within the current history, and
+  every recorded hunk is span-consistent with its commit's diff.
+  Class claims get only necessary-condition shape checks at this
+  tier: a segment recorded as procedural must carry no hunks, and a
+  segment recorded as reshaping must remove lines in a file an
+  earlier recorded segment touched, a condition evaluated only
+  where the commit's diff carries removal evidence for the
+  segment's files. This tier proves the recorded hunks are really
+  in the commit. It does not prove the recorded classes are right:
+  a class lie passes this tier and fails the transcript tier, and
+  the spike demonstrated both directions.
+
+Span-consistency is a subset check, not an equality check: every
+position a recorded hunk claims must appear among the diff's
+positions for that file, and the record never has to exhaust the
+diff, because one commit can carry several segments, hand edits,
+and work from other sessions. Verification reports the claimed and
+total diff positions per commit, so incompleteness is visible
+rather than hidden.
+
+#### The notes-only partial receipt
+
+`proof-of-steer notes REPO` builds a partial receipt from records
+alone, with no transcript read. It carries `notes_only: true`, the
+same schema id, per-commit blocks (recorded classes, decision
+outcomes, and a per-commit mark over that commit's recorded
+segments), an aggregate `mark` labelled by `mark_scope` as an
+aggregate over recorded segments only, an aggregate `decisions`
+block counted from the recorded entries, and a `capture` block with
+the record count and the verification tier, which is verified
+against the commit at most. Transcript-derived fields
+(`transcript_sha256`, `mechanistic`, `git_join`) are present as
+null and named in `unavailable_fields`: unavailable rather than
+zero. The markdown is headed as a notes-only partial receipt and
+says the same. Output files are `<label>.notes.receipt.json` and
+`<label>.notes.STEERING.md`.
+
+#### Rewrites: what happens to records
+
+`capture init` writes `notes.rewriteRef` covering
+`refs/notes/steer`, so where git supports note rewriting it copies
+a commit's record onto the rewritten commit on amend and rebase.
+Three consequences, all verified against the shipped code:
+
+- The copied record still names the pre-rewrite commit inside
+  itself. That anchor is stale, verification flags it at the anchor
+  check, and the next `capture attach` on the rewritten commit
+  re-anchors the record and reports that it did so.
+- A rewrite that changes the commit's diff (a content amend, a
+  rebase that resolves differently) can move lines out from under
+  the recorded hunks. The record follows, the anchor is repaired by
+  the next attach, and the diff check then flags the hunks whose
+  claimed positions no longer exist in the new diff. That flagging
+  is the honest outcome: the record described the pre-rewrite diff.
+- The pre-rewrite commit keeps its note. Orphaned notes stay in the
+  notes ref's own history, claim nothing in the current history, and
+  still verify against their own commit.
+
+Out of scope in this build: whether git copies notes on squash and
+cherry-pick depends on the git version and the exact command shape,
+and no claim is made either way. A deleted note reads as not
+captured, indistinguishable from a commit that never had one.
+Records are only as trustworthy as the repo carrying them: anyone
+with write access to the notes ref can rewrite a record, and the
+transcript tier is the check that catches class and hunk lies,
+because the segment hashes bind each record to transcript bytes
+the rewriter would also need.
+
+How sessions map to commits in this build: one attach writes one
+record on one commit, attributing to that commit whatever of the
+session's work its diff contains. Attaching at several commits
+during a session yields per-commit records. Work that was never
+committed is in no commit's diff, so no record can claim it.
 
 ## The steering mark (v1.4)
 
