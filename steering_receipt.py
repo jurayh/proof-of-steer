@@ -50,6 +50,17 @@ Evolved from the spike prototype (../steering_join.py). Changes in v1:
     Steerprint map, so a first-time user sees every output form in
     one run. The sample is synthetic and the demo says so in its own
     output; its hand-computed receipt is asserted in tests.
+  - Decisions adoption (additive, schema stays receipt@1.0): code
+    receipts gain a top-level `decisions` block counting the
+    structured questions the agent asked and the user answered
+    (AskUserQuestion events, ported from the decision-points spike):
+    how often the user followed the option the agent marked
+    recommended, chose a different listed option, answered in free
+    text, or refused the question as posed, with errored, dismissed,
+    input-unparseable, and unparseable coverage counted alongside.
+    Decision events never create segments and do not feed the
+    steering mark in this build. Codex receipts carry the block as
+    zeros: decision events are an interactive Claude Code phenomenon.
   - Survival and correction-segment share are demoted to context /
     supporting fields, per the spike verdict; every receipt carries a
     validation_scope field.
@@ -66,7 +77,7 @@ Usage:
   python3 steering_receipt.py doc  REPO_DIR REL_MD_PATH --label L [--out DIR]
   python3 steering_receipt.py demo [--out DIR]
 """
-import argparse, hashlib, json, os, re, shutil, subprocess, sys
+import argparse, hashlib, itertools, json, os, re, shutil, subprocess, sys
 from collections import Counter
 from datetime import datetime
 from difflib import SequenceMatcher
@@ -206,6 +217,8 @@ def parse_session(path):
     injected = 0
     pending_error = False
     ts_all = []
+    decision_calls = {}    # tool_use_id -> input, for AskUserQuestion calls
+    decision_results = {}  # tool_use_id -> (result_text, is_error)
     transcript_bytes = Path(path).read_bytes()
     for line in transcript_bytes.decode("utf-8", errors="replace").splitlines():
         try: r = json.loads(line)
@@ -218,8 +231,12 @@ def parse_session(path):
             blocks = content if isinstance(content, list) else (
                 [{"type": "text", "text": content}] if isinstance(content, str) else [])
             for blk in blocks:
-                if isinstance(blk, dict) and blk.get("type") == "tool_result" and blk.get("is_error"):
-                    pending_error = True
+                if isinstance(blk, dict) and blk.get("type") == "tool_result":
+                    if blk.get("is_error"):
+                        pending_error = True
+                    decision_results[blk.get("tool_use_id")] = (
+                        _decision_result_text(blk.get("content")),
+                        bool(blk.get("is_error")))
             texts = [b.get("text", "") for b in blocks if isinstance(b, dict) and b.get("type") == "text"]
             joined = "\n".join(texts).strip()
             if joined:
@@ -238,6 +255,16 @@ def parse_session(path):
                     segments.append(cur)
                     pending_error = False
         if r.get("type") == "assistant":
+            # Decision-event collection deliberately sits outside the
+            # message.id dedupe below: transcripts that emit one record
+            # per content block under a shared message id would
+            # otherwise lose every AskUserQuestion block after the
+            # first. Pairing is by tool_use id, as in the spike's
+            # walker, so a re-emitted call still counts once.
+            for blk in (msg.get("content") or []):
+                if isinstance(blk, dict) and blk.get("type") == "tool_use" \
+                        and blk.get("name") == "AskUserQuestion":
+                    decision_calls[blk.get("id")] = blk.get("input") or {}
             mid = msg.get("id")
             if mid and mid in seen_msg_ids: continue
             if mid: seen_msg_ids.add(mid)
@@ -263,12 +290,335 @@ def parse_session(path):
                     elif name == "Edit":
                         cur["ops"].append(("edit", norm_path(inp.get("file_path", "?")),
                                             (inp.get("old_string", ""), inp.get("new_string", ""))))
+    decision_events = []
+    for call_id, call_input in decision_calls.items():
+        res = decision_results.get(call_id)
+        decision_events.append((call_input,
+                                res[0] if res else None,
+                                res[1] if res else False))
     return segments, {
         "injected_filtered": injected, "tokens_in": tokens_in, "tokens_out": tokens_out,
         "active_min": active_minutes(ts_all),
         "wall_min": round((max(ts_all) - min(ts_all)).total_seconds() / 60, 1) if len(ts_all) > 1 else 0.0,
         "transcript_sha256": hashlib.sha256(transcript_bytes).hexdigest(),
         "earliest_ts": min(ts_all).isoformat() if ts_all else None,
+        "decision_events": decision_events,
+    }
+
+# ---------------------------------------------------------------- decision events
+# Structured questions the agent asked and the user answered (Claude
+# Code AskUserQuestion calls), ported from the decision-points spike
+# (../decision-spike/extract.py). The spike classified 10,763 answered
+# questions pooled across trace-commons and SWE-chat with 3.08%
+# unparseable, hand-checked all 24 trace-commons questions against
+# the raw records, and returned an ADOPT verdict. The port below is
+# deliberately literal so the shipped numbers stay the spike's
+# numbers; the corpus regression in the test suite pins that.
+DECISION_REC_MARK = "(recommended)"
+DECISIONS_SCOPE_CC = (
+    "Decision fields count the structured questions the agent asked "
+    "and the user answered. Followed and diverged are defined only "
+    "where the agent marked a recommended option, and "
+    "decisions_with_recommendation is their denominator: agents mark "
+    "inconsistently (4% of questions in one validated corpus, 40% in "
+    "another). A listed pick on an unmarked question counts as "
+    "diverged_to_listed and means only that the user chose among the "
+    "offered options. Free-text answers mean the user left the "
+    "offered options entirely. Sessions where the agent never asks "
+    "have zero decision points, which says nothing about steering "
+    "through ordinary turns.")
+DECISIONS_SCOPE_CODEX = (
+    "Decision fields count the structured questions the agent asked "
+    "and the user answered. Events of this kind are an interactive "
+    "Claude Code phenomenon: the validated Codex rollouts are "
+    "unattended runs and contain none (a full pattern scan of the "
+    "rollout batch found zero), so this block reads zero rather than "
+    "being omitted, and zero says nothing about steering through "
+    "the rollout's turns.")
+
+def decisions_scope_label(harness, meta):
+    if harness == "codex":
+        return DECISIONS_SCOPE_CODEX
+    return DECISIONS_SCOPE_CC
+
+def _decision_result_text(content):
+    """Normalize a tool_result content (str or block list) to text."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for b in content:
+            if isinstance(b, dict) and b.get("type") == "text":
+                parts.append(b.get("text", ""))
+            elif isinstance(b, str):
+                parts.append(b)
+        return "".join(parts)
+    return ""
+
+def _decision_norm(s):
+    return " ".join((s or "").split())
+
+def _split_decision_answers(text, questions):
+    """Slice the serialized "Q"="A", ... result into per-question
+    answers. Returns (answers, failure): answers is a list aligned
+    with questions (entries may be None) and failure is None or a
+    reason. Anchors are the exact question texts from the tool_use
+    input, so answers are sliced between their own question anchor
+    and a verified terminator: the next pair's anchor, the ". You
+    can now continue" suffix, end of string, or the
+    ' selected preview:' / ' user notes:' markers (a chosen option's
+    preview, or the user's annotation, is recorded between the
+    answer and the next pair; the answer is still just the label
+    before the marker). Internal quotes inside an answer (pasted
+    logs, code) satisfy none of the terminator tests and are
+    skipped."""
+    def anchor(i):
+        return '"' + (questions[i].get("question") or "") + '"='
+
+    answers = [None] * len(questions)
+    cursor = 0
+    for i in range(len(questions)):
+        j = text.find(anchor(i), cursor)
+        if j < 0:
+            continue
+        astart = j + len(anchor(i))
+        if astart >= len(text) or text[astart] != '"':
+            continue
+        astart += 1
+        p = astart
+        while True:
+            p = text.find('"', p)
+            if p < 0:
+                break
+            after = text[p + 1:p + 24]
+            if after.startswith(" selected preview:") or after.startswith(" user notes:"):
+                answers[i] = text[astart:p]
+                # skip the preview / note: resume at the next anchor or the suffix
+                nxt = text.find(anchor(i + 1), p) if i + 1 < len(questions) else -1
+                sfx = text.find("You can now continue", p)
+                cursor = nxt if nxt >= 0 else (sfx if sfx >= 0 else len(text))
+                break
+            if after.startswith(", ") and (i + 1 >= len(questions)
+                                            or text.startswith(anchor(i + 1), p + 3)):
+                answers[i] = text[astart:p]
+                cursor = p + 3
+                break
+            if after.startswith(". You can now continue") or after.startswith(" You can now continue"):
+                answers[i] = text[astart:p]
+                cursor = len(text)
+                break
+            if p + 1 >= len(text) or not text[p + 1:].strip():
+                answers[i] = text[astart:p]
+                cursor = len(text)
+                break
+            p += 1  # internal quote: not a terminator, keep scanning
+        if answers[i] is None:
+            # no terminator found; leave None (counted unparseable)
+            cursor = astart
+    if all(a is None for a in answers):
+        return None, "no_anchors_found"
+    return answers, None
+
+def _segment_decision_multi(chosen, labels):
+    """If `chosen` is exactly several listed labels joined by ', ',
+    return them as a list; else None."""
+    if not chosen or len(labels) < 2 or len(labels) > 8:
+        return None
+    pieces = chosen.split(", ")
+    if len(pieces) >= 2 and all(p in labels for p in pieces):
+        return pieces
+    for r in range(2, len(labels) + 1):
+        for combo in itertools.combinations(labels, r):
+            if ", ".join(combo) == chosen:
+                return list(combo)
+    return None
+
+def _classify_decision_question(chosen, question):
+    """Classify one answered question. Returns (cls, detail)."""
+    options = question.get("options") or []
+    labels = [o.get("label", "") for o in options if isinstance(o, dict)]
+    rec_label = next((l for l in labels if DECISION_REC_MARK in l.lower()), None)
+    detail = {"labels": labels, "rec_label": rec_label,
+              "multi_select": bool(question.get("multiSelect"))}
+    if chosen is None:
+        return "unparseable", {**detail, "reason": "no_answer_sliced"}
+    if not chosen.strip():
+        return "unparseable", {**detail, "reason": "empty_answer"}
+    # exact listed match
+    if chosen in labels:
+        detail["match"] = "exact"
+        return ("followed_recommendation" if chosen == rec_label else "diverged_to_listed"), detail
+    # whitespace-normalized listed match
+    nchosen = _decision_norm(chosen)
+    for l in labels:
+        if nchosen == _decision_norm(l):
+            detail["match"] = "whitespace_normalized"
+            return ("followed_recommendation" if l == rec_label else "diverged_to_listed"), detail
+    # multi-select pick of listed labels
+    if detail["multi_select"]:
+        pieces = _segment_decision_multi(chosen, labels)
+        if pieces is not None:
+            detail.update({"match": "multi_pick", "picks": pieces})
+            return "diverged_to_listed", detail
+        return "unparseable", {**detail, "reason": "multi_select_unsplittable"}
+    return "free_text", detail
+
+def _normalize_decision_questions(call_input):
+    """Return (questions, note). questions is None when the recorded
+    input cannot yield a question list (missing, double-encoded beyond
+    repair, or not a list at all). Some harnesses store `questions` as
+    a JSON string holding the array; that is decoded transparently."""
+    if not isinstance(call_input, dict):
+        return None, "input_not_a_dict"
+    questions = call_input.get("questions")
+    note = None
+    if isinstance(questions, str):
+        try:
+            questions = json.loads(questions)
+            note = "input_double_encoded"
+        except Exception:
+            return None, "questions_string_undecodable"
+    if questions is None:
+        return None, "questions_missing"
+    if not isinstance(questions, list):
+        return None, "questions_not_a_list"
+    fixed = []
+    for q in questions:
+        if isinstance(q, dict):
+            fixed.append(q)
+        else:
+            fixed.append({"question": str(q), "options": []})
+    return fixed, note
+
+def _classify_decision_call(call_input, result, is_error):
+    """Classify all questions of one AskUserQuestion call.
+
+    result: result text or None if no result record exists.
+    Errored calls return early: their questions are errored, never
+    answered. Calls whose recorded input cannot be normalized are
+    input_unparseable: counted separately, never answered. Rejected
+    calls (the question reached the user and they refused it as
+    posed) and dismissed calls likewise produce no answered
+    questions."""
+    questions, note = _normalize_decision_questions(call_input)
+    if questions is None:
+        return {"n_questions": 0, "questions": [], "status": "input_unparseable",
+                "reason": note}
+    out = {"n_questions": len(questions), "questions": []}
+    if note:
+        out["input_note"] = note
+    if is_error:
+        out["status"] = "errored"
+        return out
+    if result is None:
+        out["status"] = "answered"
+        for q in questions:
+            out["questions"].append({"class": "unparseable", "reason": "missing_result",
+                                     "chosen": None, "header": q.get("header")})
+        return out
+    if result.lstrip().startswith("[user dismissed"):
+        out["status"] = "dismissed"
+        return out
+    if result.lstrip().startswith(("The user doesn't want to proceed",
+                                   "The user does not want to proceed")):
+        # the question reached the user and they refused it as posed
+        # (sometimes asking to clarify instead): no choice was made
+        out["status"] = "rejected"
+        return out
+    answers, failure = _split_decision_answers(result, questions)
+    if answers is None:
+        # no anchors at all: maybe an unserialized reply
+        if len(questions) == 1 and result.strip():
+            if len(result) > 2000:
+                out["status"] = "answered"
+                out["questions"].append({"class": "unparseable",
+                                         "reason": "unserialized_result_implausible_length",
+                                         "chosen": None, "header": questions[0].get("header")})
+                return out
+            cls, det = _classify_decision_question(result.strip(), questions[0])
+            det = {**det, "unserialized_single": True}
+            out["status"] = "answered"
+            out["questions"].append({"class": cls, "chosen": result.strip(),
+                                     "header": questions[0].get("header"), **det})
+            return out
+        out["status"] = "answered"
+        reason = "result_not_serialized" if len(questions) > 1 else (failure or "no_anchors_found")
+        for q in questions:
+            out["questions"].append({"class": "unparseable", "reason": reason,
+                                     "chosen": None, "header": q.get("header")})
+        return out
+    out["status"] = "answered"
+    for i, q in enumerate(questions):
+        if answers[i] is None:
+            out["questions"].append({"class": "unparseable",
+                                     "reason": f"question_not_in_result:{i}",
+                                     "chosen": None, "header": q.get("header")})
+            continue
+        cls, det = _classify_decision_question(answers[i], q)
+        rec = {"class": cls, "chosen": answers[i], "header": q.get("header"), **det}
+        if failure:
+            rec["parse_note"] = failure
+        out["questions"].append(rec)
+    return out
+
+def build_decisions(events):
+    """Aggregate paired AskUserQuestion events into the receipt's
+    decisions block (the caller attaches the scope label). `events`
+    is a list of (call_input, result_text_or_None, is_error) in
+    transcript order, as parse_session collects them.
+
+    Counting follows the decision-points spike exactly. decision_points
+    counts every question in an answered call, including answers that
+    could not be classified (those are also counted in coverage as
+    unparseable_answers, the unmeasured_segments precedent).
+    rejected_decision_calls counts calls, not questions: a refused
+    call never decomposes into answered questions."""
+    counts = Counter()
+    for call_input, result, is_error in events:
+        call = _classify_decision_call(call_input, result, is_error)
+        status = call["status"]
+        if status == "input_unparseable":
+            counts["input_unparseable_decision_calls"] += 1
+        elif status == "errored":
+            counts["errored_decision_calls"] += 1
+        elif status == "dismissed":
+            counts["dismissed_decision_calls"] += 1
+        elif status == "rejected":
+            counts["rejected_decision_calls"] += 1
+        else:
+            for q in call["questions"]:
+                counts["decision_points"] += 1
+                if q.get("rec_label") is not None:
+                    counts["decisions_with_recommendation"] += 1
+                if q["class"] == "followed_recommendation":
+                    counts["followed_recommendation"] += 1
+                elif q["class"] == "diverged_to_listed":
+                    counts["diverged_to_listed"] += 1
+                elif q["class"] == "free_text":
+                    counts["free_text_answers"] += 1
+                else:
+                    counts["unparseable_answers"] += 1
+    return {
+        "method": ("AskUserQuestion tool calls paired with their tool results "
+                   "and each answered question classified by its chosen answer "
+                   "(decision-points spike, Oct 2026): followed_recommendation "
+                   "when the answer equals the option marked (Recommended), "
+                   "diverged_to_listed when it equals a different listed option "
+                   "(on unmarked questions, any listed pick), free_text_answers "
+                   "when it matches no listed label; question text is never "
+                   "stored, counts and categories only"),
+        "decision_points": counts["decision_points"],
+        "decisions_with_recommendation": counts["decisions_with_recommendation"],
+        "followed_recommendation": counts["followed_recommendation"],
+        "diverged_to_listed": counts["diverged_to_listed"],
+        "free_text_answers": counts["free_text_answers"],
+        "rejected_decision_calls": counts["rejected_decision_calls"],
+        "coverage": {
+            "errored_decision_calls": counts["errored_decision_calls"],
+            "dismissed_decision_calls": counts["dismissed_decision_calls"],
+            "input_unparseable_decision_calls": counts["input_unparseable_decision_calls"],
+            "unparseable_answers": counts["unparseable_answers"],
+        },
     }
 
 # ---------------------------------------------------------------- Codex adapter
@@ -1006,6 +1356,12 @@ def code_receipt(session_path, label, repo_dir=None, repo_ref=None, recon_dir=No
     impact, impact_per = classify_impact(segments, track)
     impact["scope"] = impact_scope_label(fmt, meta)
     mark = code_mark(impact, impact_per)
+    # Decision events never created segments (they were collected
+    # alongside the parse) and do not feed the mark in this build.
+    # Codex rollouts contain no such events (see the scope label), so
+    # the block is built from an empty event list and reads zeros.
+    decisions = build_decisions([] if fmt == "codex" else meta.get("decision_events", []))
+    decisions["scope"] = decisions_scope_label(fmt, meta)
     per_segment = []
     if origin_counts.get(PREEXISTING):
         per_segment.append({
@@ -1087,6 +1443,7 @@ def code_receipt(session_path, label, repo_dir=None, repo_ref=None, recon_dir=No
                           "preexisting_share_pct": round(100 * sum(1 for l, o in v if l.strip() and o == PREEXISTING) / max(1, sum(1 for l, _ in v if l.strip())), 1) if v else 0}
                          for fp, v in sorted(files.items(), key=lambda kv: -len(kv[1]))[:15]],
         },
+        "decisions": decisions,
         "labels": {"semantic_weights": "none — rule-based categories only; no model calls",
                    "receipt_nature": "descriptive evidence, not a certified grade",
                    "mark_semantics": "the mark names the process shape (how the work was steered), never its quality; it is not a grade",
@@ -1256,6 +1613,12 @@ def render_md(r):
             im = g["impact"]
             lines += [f"- Impact classes (measured effect from line provenance, never prompt wording): {im['procedural_turns']} procedural, {im['continuation_turns']} continuation, {im['reshaping_turns']} reshaping ({im['reshaping_lines']} earlier lines rewritten), {im['unmeasured_segments']} unmeasured, {im['redirect_segments']} redirect",
                       f"- Impact scope: {im['scope']}"]
+        if r.get("decisions"):
+            d = r["decisions"]
+            dc = d["coverage"]
+            lines += [f"- Decisions (structured questions the agent asked and the user answered): {d['decision_points']} answered questions, of which {d['followed_recommendation']} followed the marked recommendation (marked on {d['decisions_with_recommendation']} questions), {d['diverged_to_listed']} chose a different listed option, and {d['free_text_answers']} were answered in free text. {d['rejected_decision_calls']} question calls were rejected as posed.",
+                      f"- Decision coverage: {dc['errored_decision_calls']} errored calls, {dc['dismissed_decision_calls']} dismissed calls, {dc['input_unparseable_decision_calls']} calls with unparseable recorded input, {dc['unparseable_answers']} unparseable answers.",
+                      f"- Decision scope: {d['scope']}"]
         lines += [
                   "", "## Per-segment attribution", "",
                   "| segment | prompt chars | correction? | after error? | ops | lines introduced | lines surviving to HEAD |",
