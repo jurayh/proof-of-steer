@@ -64,6 +64,19 @@ Evolved from the spike prototype (../steering_join.py). Changes in v1:
   - Survival and correction-segment share are demoted to context /
     supporting fields, per the spike verdict; every receipt carries a
     validation_scope field.
+  - Capture adoption (additive, schema stays receipt@1.0): capture.py
+    writes steering records at commit time as git notes under
+    refs/notes/steer (see `capture init`, `capture checkpoint`, and
+    `capture attach`, the last of which pushes the notes ref only).
+    Code receipts gain a `capture` block when a capture repo is in
+    play (the CLI passes --repo by default, or --capture-repo
+    explicitly): segments a record claims, anchored and hash-matched
+    against this transcript, are marked captured, and the coverage
+    split (captured, inferred, unmeasured) is always printed. The
+    `notes` subcommand builds a notes-only partial receipt from
+    records alone, with transcript-derived fields unavailable rather
+    than zero. Verification language keeps two tiers distinct:
+    verified against the transcript, and verified against the commit.
 
 Miscounting guards (from the exploration, kept):
   - injected user-role records filtered (isMeta, <command-, <local-command,
@@ -1287,7 +1300,7 @@ def doc_mark(sections, revisions, floor_pct):
 
 # ---------------------------------------------------------------- code receipt
 def code_receipt(session_path, label, repo_dir=None, repo_ref=None, recon_dir=None, fmt="auto",
-                 commitment=False):
+                 commitment=False, capture_repo=None):
     if fmt == "auto":
         fmt = detect_format(session_path)
     if fmt == "codex":
@@ -1451,6 +1464,18 @@ def code_receipt(session_path, label, repo_dir=None, repo_ref=None, recon_dir=No
     }
     if meta.get("session_origin"):
         receipt["mechanistic"]["session_origin"] = meta["session_origin"]
+    if capture_repo is not None:
+        # Capture adoption: the block is emitted only when a capture
+        # repo is in play, so receipts built without one stay exactly
+        # as before. The recorded classes are juxtaposed with the
+        # inferred ones in the block, never substituted for them.
+        import capture as _capture
+        if fmt == "codex":
+            receipt["capture"] = _capture.capture_block_zero(
+                len(impact_per), impact_per, scope=_capture.CAPTURE_SCOPE_CODEX)
+        else:
+            receipt["capture"] = _capture.build_capture_block(
+                capture_repo, session_path, impact_per)
     if commitment:
         receipt["commitment"] = _code_commitment(meta, recon_dir, repo_dir, repo_ref)
     return receipt
@@ -1619,6 +1644,26 @@ def render_md(r):
             lines += [f"- Decisions (structured questions the agent asked and the user answered): {d['decision_points']} answered questions, of which {d['followed_recommendation']} followed the marked recommendation (marked on {d['decisions_with_recommendation']} questions), {d['diverged_to_listed']} chose a different listed option, and {d['free_text_answers']} were answered in free text. {d['rejected_decision_calls']} question calls were rejected as posed.",
                       f"- Decision coverage: {dc['errored_decision_calls']} errored calls, {dc['dismissed_decision_calls']} dismissed calls, {dc['input_unparseable_decision_calls']} calls with unparseable recorded input, {dc['unparseable_answers']} unparseable answers.",
                       f"- Decision scope: {d['scope']}"]
+        if r.get("capture"):
+            cap = r["capture"]
+            tier = cap["verification"]["tier"]
+            if tier == "verified against the transcript":
+                tier_line = ("verified against the transcript (segment hashes "
+                             "recomputed from this transcript, and recorded hunks "
+                             "checked against the commit diffs)")
+            elif tier == "verified against the commit":
+                tier_line = ("verified against the commit (the recorded hunks "
+                             "are inside the commit diffs; the recorded classes "
+                             "are not confirmed against a transcript)")
+            elif cap["captured_segments"]:
+                tier_line = (f"not verified ({len(cap['verification']['failures'])} "
+                             "capture check failure(s), listed in the receipt's "
+                             "capture block)")
+            else:
+                tier_line = "not verified (no captured segments)"
+            lines += [f"- Capture (steering recorded at commit time, in git notes under refs/notes/steer): {cap['captured_segments']} captured, {cap['inferred_segments']} inferred, {cap['unmeasured_segments']} unmeasured, of {cap['segments_total']} segments; {cap['commits_with_records']} commits carry steering records.",
+                      f"- Capture verification: {tier_line}.",
+                      f"- Capture scope: {cap['scope']}"]
         lines += [
                   "", "## Per-segment attribution", "",
                   "| segment | prompt chars | correction? | after error? | ops | lines introduced | lines surviving to HEAD |",
@@ -1689,6 +1734,7 @@ def main(argv=None):
     pc.add_argument("--out", default="receipts-out", help="output directory for <label>.receipt.json and <label>.STEERING.md (default: receipts-out)")
     pc.add_argument("--recon-dir", default=None, help="where to materialise the reconstructed git repo (default: <out>/reconstructed-<label>)")
     pc.add_argument("--commitment", action="store_true", help="emit the hash-commitment block (specs/hash-commitment.md): hashes of the exact material this receipt was derived from, computed in this run; replay commit dates are pinned so the reconstructed HEAD is reproducible")
+    pc.add_argument("--capture-repo", default=None, help="repo whose git notes (refs/notes/steer) carry capture-time steering records for this session: matching segments are marked captured in the receipt's capture block (default: the --repo value when --repo is given; no block is emitted when neither is given)")
     pd = sub.add_parser("doc", help="receipt from a document's history, via a history provider (git by default)")
     pd.add_argument("repo", help="git repo directory containing the document; with --provider folder, the folder of versioned files; with --provider gdrive-doc, the Drive file id")
     pd.add_argument("path", nargs="?", default=None, help="document path relative to the repo root (git provider only)")
@@ -1701,19 +1747,78 @@ def main(argv=None):
     pd.add_argument("--out", default="receipts-out", help="output directory (default: receipts-out)")
     px = sub.add_parser("demo", help="run the pipeline on the bundled synthetic sample session and render a receipt, a badge, and a Steerprint map")
     px.add_argument("--out", default="demo-out", help="output directory (default: demo-out)")
+    pcap = sub.add_parser("capture", help="capture-time steering records (git notes under refs/notes/steer)")
+    capsub = pcap.add_subparsers(dest="capture_cmd", required=True)
+    pci = capsub.add_parser("init", help="write the one-time setup into a repo: the notes fetch refspec, the notes push refspec with the branch push refspec alongside it, and the notes rewrite config")
+    pci.add_argument("repo", help="the repository to set up")
+    pci.add_argument("--remote", default="origin", help="remote the refspecs are written for (default: origin)")
+    pcc = capsub.add_parser("checkpoint", help="accumulate per-segment intervention records for a live session under .steering/capture/ (called by the Claude Code plugin's PostToolUse hook)")
+    pcc.add_argument("--repo", required=True, help="the session's repository")
+    pcc.add_argument("--session", required=True, help="path to the session .jsonl transcript, as it stands now")
+    pcc.add_argument("--session-id", default=None, help="session id (default: the transcript file stem)")
+    pcc.add_argument("--state-dir", default=None, help="checkpoint state directory (default: <repo>/.steering/capture)")
+    pca = capsub.add_parser("attach", help="attach the session's unrecorded segments as a steering record note on a commit, then push the notes ref only")
+    pca.add_argument("--repo", required=True, help="the session's repository")
+    pca.add_argument("--session", required=True, help="path to the session .jsonl transcript")
+    pca.add_argument("--session-id", default=None, help="session id (default: the transcript file stem)")
+    pca.add_argument("--commit", default="HEAD", help="commit to attach to (default: HEAD)")
+    pca.add_argument("--state-dir", default=None, help="checkpoint state directory (default: <repo>/.steering/capture)")
+    pca.add_argument("--no-push", action="store_true", help="skip the driver push of refs/notes/steer after attaching")
+    pn = sub.add_parser("notes", help="notes-only partial receipt from a repo's steering records, no transcript: transcript-derived fields are unavailable rather than zero")
+    pn.add_argument("repo", help="the repository carrying steering records under refs/notes/steer")
+    pn.add_argument("--label", default=None, help="receipt label (default: <repo name>-notes)")
+    pn.add_argument("--out", default="receipts-out", help="output directory (default: receipts-out)")
     args = ap.parse_args(argv)
     if args.cmd == "code" and args.repo_ref and not args.repo:
         ap.error("--repo-ref requires --repo")
     if args.cmd == "demo":
         from demo import run_demo
         return run_demo(Path(args.out))
+    if args.cmd == "capture":
+        import capture as _capture
+        if args.capture_cmd == "init":
+            print(json.dumps(_capture.init_repo(args.repo, remote=args.remote), indent=1))
+            return 0
+        if args.capture_cmd == "checkpoint":
+            st = _capture.write_checkpoint(args.repo, args.session, session_id=args.session_id,
+                                           state_dir=args.state_dir)
+            state_file = _capture.state_dir_for(args.repo, args.state_dir) / _capture._state_name(st["session_id"])
+            print(json.dumps({"session_id": st["session_id"],
+                              "segments_accumulated": len(st["segments"]),
+                              "base_commit": st["base_commit"],
+                              "state_file": str(state_file)}, indent=1))
+            return 0
+        res = _capture.attach_pending(args.repo, args.session, session_id=args.session_id,
+                                      commit=args.commit, state_dir=args.state_dir,
+                                      push=not args.no_push)
+        for line in _capture.attach_announcements(res):
+            print(line)
+        print(json.dumps(res, indent=1))
+        return 0
+    if args.cmd == "notes":
+        import capture as _capture
+        label = args.label or (Path(args.repo).name + "-notes")
+        r, md = _capture.notes_only_receipt(args.repo, label)
+        out_dir = Path(args.out); out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{label}.notes.receipt.json").write_text(json.dumps(r, indent=1), encoding="utf-8")
+        (out_dir / f"{label}.notes.STEERING.md").write_text(md, encoding="utf-8")
+        print(json.dumps({"label": label, "kind": "code", "notes_only": True,
+                          "schema": r["schema"],
+                          "receipt_json": str(out_dir / f"{label}.notes.receipt.json"),
+                          "steering_md": str(out_dir / f"{label}.notes.STEERING.md"),
+                          "mark": r["mark"]["category"] if r.get("mark") else None,
+                          "commits_with_records": r["capture"]["commits_with_records"],
+                          "segments_recorded": r["capture"]["segments_recorded"],
+                          "verification_tier": r["capture"]["verification_tier"]}, indent=1))
+        return 0
 
     out_dir = Path(args.out); out_dir.mkdir(parents=True, exist_ok=True)
     if args.cmd == "code":
         recon = Path(args.recon_dir) if args.recon_dir else out_dir / f"reconstructed-{args.label}"
+        capture_repo = args.capture_repo if args.capture_repo is not None else args.repo
         r = code_receipt(args.session, args.label, repo_dir=args.repo,
                          repo_ref=args.repo_ref, recon_dir=recon, fmt=args.format,
-                         commitment=args.commitment)
+                         commitment=args.commitment, capture_repo=capture_repo)
     else:
         from providers import ProviderUnavailable
         provider_name, ref = _infer_doc_provider(args.provider, args.repo, args.path)
