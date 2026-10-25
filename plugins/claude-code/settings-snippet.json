@@ -1,0 +1,1 @@
+{"hooks":{"PostToolUse":[{"hooks":[{"command":"python3 \"/ABSOLUTE/PATH/TO/proof-of-steering/plugins/claude-code/steering_hook.py\"","timeout":600,"type":"command"}],"matcher":""}],"SessionEnd":[{"hooks":[{"command":"python3 \"/ABSOLUTE/PATH/TO/proof-of-steering/plugins/claude-code/steering_hook.py\"","timeout":600,"type":"command"}],"matcher":""}]}}
