@@ -18,7 +18,11 @@ document mode runs on history providers and gains `provider`,
 `git_join.impact` effect classes and per-segment impact rows; both kinds
 gain the `mark` field; and the `commitment` block specified below is now
 emitted behind the opt-in `--commitment` flag, so the schema id stays
-`receipt@1.0`.)
+`receipt@1.0`.
+The decisions adoption (Oct 25, 2026) is likewise purely additive: code
+receipts gain a top-level `decisions` block (see the decision points
+section below) and document receipts are unchanged, so the schema id
+stays `receipt@1.0`.)
 Emitted by `steering_receipt.py` as `<label>.receipt.json`, with a rendered
 `<label>.STEERING.md` alongside. Stdlib-only, computed locally; a receipt
 never contains raw prompt text, tool arguments, or file contents — counts,
@@ -95,6 +99,7 @@ the in-memory line provenance.
 | `git_join.supporting_fields.correction_segment_share_pct` | float\|null | supporting (demoted) | Share of HEAD lines originating in correction-keyword or after-error segments. Noisy in both directions (0–100% in both spike groups); read jointly with `human_turns`. Pushback-derived: per-harness value, do not pool across harnesses. |
 | `git_join.blame_vs_memory_provenance_agreement_pct` | float\|null | — | Agreement between `git blame` attribution and in-memory provenance over HEAD lines. Below ~95% means the reconstruction itself is suspect. |
 | `git_join.impact` | object | headline (v1.4) | Effect-based segment classification (see the impact section below): `procedural_turns`, `continuation_turns`, `reshaping_turns`, `unmeasured_segments`, `reshaping_share_pct`, `reshaping_lines`, `redirect_segments`, `method`, and `scope` (the scope label keyed to the segment source). |
+| `decisions` | object | supporting (decisions adoption) | Structured questions the agent asked and the user answered (AskUserQuestion events; see the decision points section below): `decision_points`, `decisions_with_recommendation`, `followed_recommendation`, `diverged_to_listed`, `free_text_answers`, `rejected_decision_calls`, a `coverage` object (errored, dismissed, and input-unparseable calls, plus unparseable answers), `method`, and `scope`. Code receipts only. |
 | `mechanistic.session_origin` | object | context (v1.4, Codex only) | The rollout's `session_meta` origin metadata, `originator` and `source` (for example `codex_exec` / `exec` for unattended runs). Keys the impact scope label; absent when the rollout carries none. |
 | `git_join.per_segment[]` | array | headline | One row per segment: `segment` (index; −1 = pre-existing seed pseudo-segment, with `kind` set), `prompt_chars` (length only, never text), `correction_keyword`, `after_error`, `rubber_stamp`, `edit_write_ops`, `lines_introduced_gross`, `lines_surviving_to_head`. Human-segment rows add (v1.4) `impact_class`, `redirect`, and `overlap_earlier_lines`. |
 | `git_join.per_file[]` | array | headline | Up to 15 largest files at HEAD: `file`, `final_lines`, `first_segment_share_pct`, `preexisting_share_pct`. |
@@ -224,6 +229,92 @@ prompts were a pre-written escalation ladder fired on schedule, and
 reshaping there (median share 66.7%) is dense by construction. For
 Codex rollouts without usable origin metadata, the label prints the
 general caution.
+
+### Decision points (decisions adoption)
+
+Code receipts carry a top-level `decisions` block counting the
+structured questions the agent asked and the user answered: Claude
+Code `AskUserQuestion` calls, paired with their tool results and
+classified by the chosen answer. The block makes behavior at offered
+forks visible, including the rubber-stamp pattern where a user takes
+every recommended option and never answers in their own words. It
+complements the turn-level impact classes, which only see steering
+after a draft exists: a user who steers well at the forks may show
+little reshaping precisely because the rework never became
+necessary.
+
+Fields:
+
+- `decision_points`: answered questions. Errored, rejected,
+  dismissed, and input-unparseable calls never contribute.
+- `decisions_with_recommendation`: of those, the questions where one
+  option was marked "(Recommended)". This is the only denominator
+  for followed and diverged rates.
+- `followed_recommendation`: the chosen answer equals the marked
+  option.
+- `diverged_to_listed`: the chosen answer equals a different listed
+  option. On questions where no recommendation was marked, any
+  listed pick lands here. Multi-select picks that split cleanly
+  into listed labels also land here.
+- `free_text_answers`: the chosen answer matches no listed label,
+  meaning the user left the offered options entirely.
+- `rejected_decision_calls`: calls the user refused as posed (the
+  result records the refusal). The unit is calls, because a refused
+  call never decomposes into answered questions. Refusal is a
+  steering act in its own right, so it ships as a field rather than
+  only as coverage.
+
+Coverage companions, always printed beside the fields (the
+`unmeasured_segments` precedent): `coverage.errored_decision_calls`
+(the tool call failed and the question never reached the user),
+`coverage.dismissed_decision_calls` (the user dismissed the question
+with no response), `coverage.input_unparseable_decision_calls` (the
+recorded call input could not yield a question list), and
+`coverage.unparseable_answers` (answered questions whose answer
+could not be classified, with `decision_points` counting them). A receipt
+whose decision coverage is thin discounts itself.
+
+**Scope label.** `decisions.scope` states what the counts may be
+read as. Decision fields count the structured questions the agent
+asked and the user answered. Followed and diverged are defined only
+where the agent marked a recommended option, and
+`decisions_with_recommendation` is their denominator: agents mark
+inconsistently (4% of questions in one validated corpus, 40% in
+another), so a listed pick on an unmarked question is not evidence
+about recommendations. Free-text answers mean the user left the
+offered options entirely. Sessions where the agent never asks have
+zero decision points, which says nothing about steering through
+ordinary turns. For Codex receipts the label states instead that
+decision events are an interactive Claude Code phenomenon: the
+validated Codex rollouts are unattended runs and contain none, so
+the block reads zero rather than being omitted, so absence is
+visible and not silent.
+
+**The steering mark does not use these fields.** In this build the
+mark is computed exactly as before, from the presence-level impact
+fields only. The decisions block is reported evidence for the
+reader, not a mark input.
+
+Validation (decision-points spike, Oct 2026): 10,763 answered
+questions pooled across SWE-chat (12,418 Claude Code sessions) and
+trace-commons (28 sessions), with 3.08% unparseable. All 24
+trace-commons questions were hand-checked against the raw records
+and agreed with the extractor. Decision points appear in 26 to 30%
+of interactive sessions with at least five turns. Within questions
+where a recommendation was marked, users followed it 70.7% of the
+time, picked a different listed option 16.2%, and answered in free
+text 12.8%. Whether the never-diverged pattern predicts low
+reshaping could not be tested with the corpora in hand, and no
+such claim is made.
+
+Honest limits: the fields measure behavior at offered forks only,
+and an agent that never asks produces no decision points however
+steered the session was. Free-text answers are heterogeneous
+(premise corrections, fetched values, pasted material, and
+counter-questions all land there) and reliably mean only that the
+user left the menu. Taking the recommended option is not proof of
+passivity, and diverging is not proof that the choice changed the
+artifact.
 
 ## The steering mark (v1.4)
 
