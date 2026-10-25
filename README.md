@@ -130,6 +130,7 @@ Plain-word version. The full field-by-field contract is [SCHEMA.md](SCHEMA.md) (
 - **Human turns**: genuine human prompts, with injected system records filtered out. The basic unit of steering.
 - **Post-first-prompt share** (code): the share of shipped lines whose origin is a segment after the first artifact-producing one. 0% means the shipped artifact is the first prompt's output, untouched in origin. This is the headline field.
 - **Per-segment and per-file attribution** (code): which turns and which files the surviving lines came from, including how much came from correction and after-error segments.
+- **Decision points** (code): the structured questions the agent asked and the user answered, counted by what the user did with the choice: followed the option the agent marked recommended, picked a different listed option, answered in free text, or refused the question as posed. Code receipts carry a `decisions` block with these counts and their coverage.
 - **Coverage**: how much of the session the reconstruction could actually replay. A low-coverage receipt should be discounted by its reader, so the number is printed on every receipt.
 - **Unchanged share** (doc): at least this share of final lines survives verbatim from the first version. It is a floor, not a point estimate, and it is only interpretable next to the revision count printed with it. A sentence-level share is reported alongside for prose.
 - **Per-section map** (doc): for each section, how much is unchanged from the first version and which revisions introduced the rest.
