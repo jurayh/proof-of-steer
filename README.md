@@ -106,6 +106,36 @@ Doc mode walks the document's revision history and maps, per section, what survi
 
 The sample (`doc-steered-findings-draft`) covers 3 revisions of a research findings draft and 242 nonblank lines in its final version: **at least 36.0%** of the final text survives verbatim from the first version. The per-section map is where the story is: the phase one sections are 100% first draft, the cost estimate section first appears in revision 2, and every phase two section arrives in revision 3.
 
+### Capture mode: steering records at commit time
+
+Everything above is reconstructed after the fact, by replaying a transcript and joining line provenance against git blame. Capture runs the other way: at commit time it writes a steering record as the commit's git note under `refs/notes/steer`, stating which segments of the session landed in that commit, what each segment measurably did (its impact class, its decision outcomes as classes only, the diff hunks it produced), and a hash of the transcript bytes those claims came from. Later receipts then separate **captured** segments from **inferred** ones and print the split on every receipt.
+
+One-time setup per repo:
+
+```bash
+proof-of-steer capture init path/to/repo
+```
+
+That writes the git config that lets the notes travel: a fetch refspec for `refs/notes/steer`, a push refspec pair that carries the notes alongside the branches (a lone notes push refspec would make `git push` drop the branches, so the pair is always written together), and the notes rewrite config that lets records follow amended and rebased commits where git supports it.
+
+From there the Claude Code plugin drives it: a PostToolUse hook accumulates provisional records during the session, and at SessionEnd the attach writes the record onto HEAD and pushes **only** `refs/notes/steer` to the repo's existing origin, announcing the push in its output. A push failure is reported, never fatal, and the init config remains as the fallback transport for your next normal push. To attach by hand at any commit:
+
+```bash
+proof-of-steer capture attach --repo path/to/repo --session path/to/session.jsonl
+```
+
+A record holds ids, hashes, counts, timestamps, and line spans only. Never transcript text, never prompt text, never file contents, never a question or an answer. Decision entries store the class of each answer and whether a recommendation was marked, and nothing else.
+
+Verification keeps two tiers distinct, and receipts state which one they carry. **Verified against the transcript** means the segment hashes were recomputed from the held transcript and the recorded hunks were checked against the commit diffs. **Verified against the commit** means only the diff checks ran, which prove the recorded hunks are really in the commit, not that the recorded classes are right. Class honesty needs the transcript, and the transcript never leaves your machine.
+
+A repo's records can also be read on their own, with no transcript anywhere:
+
+```bash
+proof-of-steer notes path/to/repo --label my-repo
+```
+
+That builds a notes-only partial receipt: per-commit classes, decision outcomes, and marks where the records support them, labelled notes-only, with transcript-derived fields shown as unavailable rather than zero.
+
 ### More flags
 
 ```bash
@@ -131,6 +161,7 @@ Plain-word version. The full field-by-field contract is [SCHEMA.md](SCHEMA.md) (
 - **Post-first-prompt share** (code): the share of shipped lines whose origin is a segment after the first artifact-producing one. 0% means the shipped artifact is the first prompt's output, untouched in origin. This is the headline field.
 - **Per-segment and per-file attribution** (code): which turns and which files the surviving lines came from, including how much came from correction and after-error segments.
 - **Decision points** (code): the structured questions the agent asked and the user answered, counted by what the user did with the choice: followed the option the agent marked recommended, picked a different listed option, answered in free text, or refused the question as posed. Code receipts carry a `decisions` block with these counts and their coverage.
+- **Capture** (code): when the session's repo carries steering records in its git notes, the receipt gains a `capture` block: how many segments were captured at commit time, how many are inferred after the fact, and how many are unmeasured, with the verification tier stated in the words above. Absence of records reads as zero captured, never as absence of steering.
 - **Coverage**: how much of the session the reconstruction could actually replay. A low-coverage receipt should be discounted by its reader, so the number is printed on every receipt.
 - **Unchanged share** (doc): at least this share of final lines survives verbatim from the first version. It is a floor, not a point estimate, and it is only interpretable next to the revision count printed with it. A sentence-level share is reported alongside for prose.
 - **Per-section map** (doc): for each section, how much is unchanged from the first version and which revisions introduced the rest.
@@ -173,7 +204,7 @@ One honest break in the analogy, stated plainly. A public key is unforgeable and
 python3 -m unittest discover -s tests
 ```
 
-Thirty-six tests, standard library only, including fixtures that pin the seeding behavior, the sentence-share computation, the floor wording on rendered receipts, the Codex adapter, the provider registry and fixture histories, the impact classification, the steering mark boundaries, and the hash-commitment round trip.
+Sixty-six tests, standard library only, including fixtures that pin the seeding behavior, the sentence-share computation, the floor wording on rendered receipts, the Codex adapter, the provider registry and fixture histories, the impact classification, the steering mark boundaries, the hash-commitment round trip, the decision points, and the capture flow: record round trips through a bare remote, tamper flags at both verification tiers, the notes-only partial receipt, and the amend behaviour.
 
 ## License
 
