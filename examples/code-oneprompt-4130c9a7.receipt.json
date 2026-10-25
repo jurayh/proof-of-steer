@@ -177,6 +177,22 @@
    }
   ]
  },
+ "decisions": {
+  "method": "AskUserQuestion tool calls paired with their tool results and each answered question classified by its chosen answer (decision-points spike, Oct 2026): followed_recommendation when the answer equals the option marked (Recommended), diverged_to_listed when it equals a different listed option (on unmarked questions, any listed pick), free_text_answers when it matches no listed label; question text is never stored, counts and categories only",
+  "decision_points": 0,
+  "decisions_with_recommendation": 0,
+  "followed_recommendation": 0,
+  "diverged_to_listed": 0,
+  "free_text_answers": 0,
+  "rejected_decision_calls": 0,
+  "coverage": {
+   "errored_decision_calls": 0,
+   "dismissed_decision_calls": 0,
+   "input_unparseable_decision_calls": 0,
+   "unparseable_answers": 0
+  },
+  "scope": "Decision fields count the structured questions the agent asked and the user answered. Followed and diverged are defined only where the agent marked a recommended option, and decisions_with_recommendation is their denominator: agents mark inconsistently (4% of questions in one validated corpus, 40% in another). A listed pick on an unmarked question counts as diverged_to_listed and means only that the user chose among the offered options. Free-text answers mean the user left the offered options entirely. Sessions where the agent never asks have zero decision points, which says nothing about steering through ordinary turns."
+ },
  "labels": {
   "semantic_weights": "none \u2014 rule-based categories only; no model calls",
   "receipt_nature": "descriptive evidence, not a certified grade",
