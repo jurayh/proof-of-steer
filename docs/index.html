@@ -45,6 +45,7 @@ p{margin:0 0 14px;max-width:700px}
 figure{margin:22px 0;background:var(--card);border:1px solid var(--line);
   border-radius:12px;padding:22px}
 figure svg{display:block;width:100%;height:auto}
+figure img{display:block;width:100%;height:auto}
 figcaption{font-size:13.5px;color:var(--muted);margin-top:14px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
 .mode{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px}
@@ -258,6 +259,10 @@ a{color:var(--first)}
       <p class="muted">Doc mode walks the committed revisions of any document in git and maps each section the same way.</p>
     </div>
   </div>
+
+  <h3>Decision points</h3>
+  <p>Code receipts also count the moments the agent stopped and asked. Each structured question the user answered is classified by what the user did with the choice: followed the option the agent marked recommended, picked a different listed option, answered in free text, or refused the question as posed. Errored and unparseable calls are printed as coverage alongside, never folded into the counts.</p>
+  <p>One honesty rule travels with these numbers. Agents mark a recommended option inconsistently, so every count is printed next to how many questions carried a mark at all, and the followed count is read against that marked subset only. The steering mark does not use these fields. They describe what happened at the forks of the session, and a session where the agent never asked reads zero, which says nothing about steering through ordinary turns.</p>
 </section>
 
 <section>
@@ -297,11 +302,26 @@ a{color:var(--first)}
     </svg>
     <figcaption>Nothing is uploaded and nobody is scanned. The person who did the work generates the evidence and chooses to attach it.</figcaption>
   </figure>
+  <p>Maintainers can ask for the receipt where the habit forms, in the pull request template. The repo ships a short section to paste in, <a href="https://github.com/jurayh/proof-of-steer/blob/main/examples/pull-request-template.md">examples/pull-request-template.md</a>: contributors who used an agent fill in their steering mark and attach the receipt, and everyone else deletes the section. This repo's own pull request template carries the same section.</p>
 </section>
 
 <section>
   <h2>Quickstart</h2>
-  <p>Requirements are Python 3, standard library only, and git on the path. There is nothing to install and nothing to sign up for.</p>
+  <p>Requirements are Python 3.8 or later, standard library only, and git on the path. Nothing is uploaded anywhere, and there is nothing to sign up for.</p>
+  <p>Run it without installing anything, if you have <a href="https://docs.astral.sh/uv/">uv</a>:</p>
+  <pre><code>uvx proof-of-steer code path/to/session.jsonl --label my-session</code></pre>
+  <p>Or install it:</p>
+  <pre><code>pipx install proof-of-steer
+# or: pip install proof-of-steer</code></pre>
+  <p>Or run it from a clone of the repo, where the commands below use <code>python3 steering_receipt.py</code> in place of <code>proof-of-steer</code>, and <code>python3 steering_viz.py</code> in place of <code>steerprint</code>. The two forms are the same tool.</p>
+
+  <h3>Try it first: the bundled demo</h3>
+  <pre><code>proof-of-steer demo</code></pre>
+  <p>The demo runs the full pipeline on a small synthetic session that ships with the tool and writes a receipt, a badge, and a Steerprint map into <code>demo-out</code>. It is the thirty-second try, no transcript of your own needed.</p>
+  <figure>
+    <img src="terminal-demo.gif" alt="The proof-of-steer demo running in a terminal">
+    <figcaption>The bundled demo in a terminal, from the command to the mark.</figcaption>
+  </figure>
 
   <h3>Code mode: a coding agent session</h3>
   <pre><code>python3 steering_receipt.py code path/to/session.jsonl --label my-session</code></pre>
