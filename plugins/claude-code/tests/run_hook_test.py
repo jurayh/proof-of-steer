@@ -6,7 +6,8 @@ transcript (trace-commons session 860618e1) and checks:
 
   1. Hook mode, documented SessionEnd payload -> exit 0, receipt written
      to <repo>/.steering/steering-receipt.json, harness "claude-code",
-     post_first_prompt_share_pct == 86.4 (the spike's hand-checked value;
+     post_first_prompt_share_pct == 87.2 (at complete op collection;
+     the spike's hand-checked value was 86.4 on the lossy parse;
      the temp repo shares no file paths with the session, so repo seeding
      must find nothing and the unseeded spike numbers must reproduce).
   2. Hook mode, bogus transcript path -> exit 0 (fail-silent), the reason
@@ -107,9 +108,9 @@ def main():
     check("harness is claude-code", receipt.get("harness") == "claude-code",
           f"harness={receipt.get('harness')}")
     share = receipt["git_join"]["headline_fields"]["post_first_prompt_share_pct"]
-    check("post_first_prompt_share_pct == 86.4", share == 86.4, f"got {share}")
+    check("post_first_prompt_share_pct == 87.2", share == 87.2, f"got {share}")
     agree = receipt["git_join"]["blame_vs_memory_provenance_agreement_pct"]
-    check("blame agreement == 99.5", agree == 99.5, f"got {agree}")
+    check("blame agreement == 99.9", agree == 99.9, f"got {agree}")
     turns = receipt["mechanistic"]["human_turns"]
     check("human turns == 40", turns == 40, f"got {turns}")
     log_lines = (steering / "hook.log").read_text().strip().splitlines()
@@ -146,7 +147,7 @@ def main():
                        env=clean_env({"HOME": str(home)}), timeout=1700)
     check("manual --latest: exit 0", p.returncode == 0,
           f"rc={p.returncode} stderr={p.stderr.strip()[:200]}")
-    check("manual --latest: prints 86.4", "86.4" in p.stdout)
+    check("manual --latest: prints 87.2", "87.2" in p.stdout)
     check("manual --latest: prints 40 turns", "40" in p.stdout)
 
     # ---- 5. capture flow -------------------------------------------
