@@ -24,24 +24,26 @@
    "shell_total": 8,
    "browser_lane_actions": 0
   },
-  "edit_write_ops": 39,
+  "edit_write_ops": 46,
   "coverage": {
    "repo_supplied": false,
    "seed_source": null,
-   "writes": 28,
-   "edits_total": 11,
-   "edits_applied_on_transcript_base": 10,
+   "writes": 34,
+   "edits_total": 12,
+   "edits_applied_on_transcript_base": 12,
    "edits_applied_on_repo_seeded_base": 0,
-   "edits_unapplied_no_base": 1,
+   "edits_unapplied_no_base": 0,
    "edits_unapplied_no_match": 0,
-   "files_seeded_from_repo": 0
+   "files_seeded_from_repo": 0,
+   "ops_present_in_transcript": 46,
+   "ops_collected": 46
   }
  },
  "git_join": {
   "method": "reconstructed local git repo, one commit per human-turn segment (plus a pre-existing commit when --repo seeding occurred); git blame on HEAD cross-checked vs in-memory line provenance",
   "reconstructed_repo_local_path": null,
-  "files_at_head": 28,
-  "final_nonblank_lines": 3113,
+  "files_at_head": 34,
+  "final_nonblank_lines": 3547,
   "git_ai_style_line_authorship": "agent-typed vs pre-existing split is reported via per_segment origin -1; authorship alone carries no triage signal (spike finding)",
   "first_artifact_segment": 0,
   "headline_fields": {
@@ -49,8 +51,8 @@
    "preexisting_share_pct": 0.0
   },
   "context_fields": {
-   "first_segment_lines": 3113,
-   "first_segment_lines_surviving_to_head": 3113,
+   "first_segment_lines": 3547,
+   "first_segment_lines_surviving_to_head": 3547,
    "first_segment_survival_pct": 100.0,
    "share_of_head_already_present_after_first_segment_pct": 100.0
   },
@@ -76,9 +78,9 @@
     "correction_keyword": false,
     "after_error": false,
     "rubber_stamp": false,
-    "edit_write_ops": 39,
-    "lines_introduced_gross": 3123,
-    "lines_surviving_to_head": 3113,
+    "edit_write_ops": 46,
+    "lines_introduced_gross": 3559,
+    "lines_surviving_to_head": 3547,
     "impact_class": "continuation",
     "redirect": false,
     "overlap_earlier_lines": 0
@@ -128,6 +130,12 @@
     "preexisting_share_pct": 0.0
    },
    {
+    "file": "JOB_BOARD/frontend/src/styles.css",
+    "final_lines": 171,
+    "first_segment_share_pct": 100.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
     "file": "backend/src/routes/jobs.js",
     "final_lines": 142,
     "first_segment_share_pct": 100.0,
@@ -166,12 +174,6 @@
    {
     "file": "src/routes/candidate/profile.tsx",
     "final_lines": 95,
-    "first_segment_share_pct": 100.0,
-    "preexisting_share_pct": 0.0
-   },
-   {
-    "file": "backend/src/utils/email.js",
-    "final_lines": 83,
     "first_segment_share_pct": 100.0,
     "preexisting_share_pct": 0.0
    }
