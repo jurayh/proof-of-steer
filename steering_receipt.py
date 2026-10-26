@@ -226,6 +226,10 @@ def parse_session(path):
     segments = []
     cur = None
     seen_msg_ids = set()
+    msg_segment = {}       # message id -> the segment its first record opened
+    seen_op_keys = set()   # dedupe keys of Edit/Write ops already collected
+    ops_present_keys = set()  # dedupe keys of Edit/Write ops present in the transcript
+    ops_present_idless = 0   # id-less Edit/Write blocks in id-less records (no key exists)
     tokens_in = tokens_out = 0
     injected = 0
     pending_error = False
@@ -268,41 +272,79 @@ def parse_session(path):
                     segments.append(cur)
                     pending_error = False
         if r.get("type") == "assistant":
+            blocks = [b for b in (msg.get("content") or []) if isinstance(b, dict)]
             # Decision-event collection deliberately sits outside the
             # message.id dedupe below: transcripts that emit one record
             # per content block under a shared message id would
             # otherwise lose every AskUserQuestion block after the
             # first. Pairing is by tool_use id, as in the spike's
             # walker, so a re-emitted call still counts once.
-            for blk in (msg.get("content") or []):
-                if isinstance(blk, dict) and blk.get("type") == "tool_use" \
+            for blk in blocks:
+                if blk.get("type") == "tool_use" \
                         and blk.get("name") == "AskUserQuestion":
                     decision_calls[blk.get("id")] = blk.get("input") or {}
             mid = msg.get("id")
-            if mid and mid in seen_msg_ids: continue
-            if mid: seen_msg_ids.add(mid)
-            u = msg.get("usage") or {}
-            tokens_in += u.get("input_tokens", 0); tokens_out += u.get("output_tokens", 0)
-            if cur is None:
-                cur = {"idx": len(segments), "prompt_chars": 0, "correction_keyword": False,
-                       "rubber_stamp": False, "after_error": False, "pre_prompt": True,
-                       "first_ts": r.get("timestamp"),
-                       "ops": [], "tools": Counter(), "test_bash": 0,
-                       "browser_actions": 0, "shell_calls": 0, "errors_seen": 0}
-                segments.append(cur)
-            for blk in (msg.get("content") or []):
-                if isinstance(blk, dict) and blk.get("type") == "tool_use":
-                    name = blk.get("name", "?"); inp = blk.get("input") or {}
-                    cur["tools"][name] += 1
-                    if name in ("Bash", "PowerShell"):
-                        cur["shell_calls"] += 1
-                        if TEST_RE.search(inp.get("command", "") or ""): cur["test_bash"] += 1
-                    if any(k in name.lower() for k in BROWSER_TOOLS): cur["browser_actions"] += 1
-                    if name == "Write":
-                        cur["ops"].append(("write", norm_path(inp.get("file_path", "?")), inp.get("content", "")))
-                    elif name == "Edit":
-                        cur["ops"].append(("edit", norm_path(inp.get("file_path", "?")),
-                                            (inp.get("old_string", ""), inp.get("new_string", ""))))
+            duplicate = bool(mid and mid in seen_msg_ids)
+            if not duplicate:
+                if mid: seen_msg_ids.add(mid)
+                u = msg.get("usage") or {}
+                tokens_in += u.get("input_tokens", 0); tokens_out += u.get("output_tokens", 0)
+                if cur is None:
+                    cur = {"idx": len(segments), "prompt_chars": 0, "correction_keyword": False,
+                           "rubber_stamp": False, "after_error": False, "pre_prompt": True,
+                           "first_ts": r.get("timestamp"),
+                           "ops": [], "tools": Counter(), "test_bash": 0,
+                           "browser_actions": 0, "shell_calls": 0, "errors_seen": 0}
+                    segments.append(cur)
+                if mid: msg_segment[mid] = cur
+                for blk in blocks:
+                    if blk.get("type") == "tool_use":
+                        name = blk.get("name", "?"); inp = blk.get("input") or {}
+                        cur["tools"][name] += 1
+                        if name in ("Bash", "PowerShell"):
+                            cur["shell_calls"] += 1
+                            if TEST_RE.search(inp.get("command", "") or ""): cur["test_bash"] += 1
+                        if any(k in name.lower() for k in BROWSER_TOOLS): cur["browser_actions"] += 1
+            # Artifact op collection also sits outside the dedupe,
+            # for the same phenomenon: on block-per-record transcripts
+            # a message's Edit and Write blocks live in later records
+            # the dedupe steps over, and the false one-shot
+            # validation (Oct 2026) measured 52% of ops lost that way
+            # on trace-commons. Collection is keyed by tool_use id,
+            # so an op re-emitted in a second block-record is
+            # collected exactly once, and ops from a duplicate record
+            # attach to the segment the message's first record
+            # opened. Token math and the tool counters above stay
+            # deduped exactly as before.
+            seg = (msg_segment.get(mid) or cur) if duplicate else cur
+            for blk in blocks:
+                if blk.get("type") == "tool_use" and blk.get("name") in ("Write", "Edit"):
+                    inp = blk.get("input") or {}
+                    oid = blk.get("id")
+                    if oid is not None:
+                        key = ("id", oid)
+                    elif mid:
+                        # No tool_use id: key on the message id plus a
+                        # fingerprint of the call, so a record that
+                        # re-emits the same block counts once while a
+                        # distinct block of the same message collects.
+                        key = ("fp", mid, hashlib.sha256(json.dumps(
+                            [blk.get("name"), inp], sort_keys=True,
+                            default=str).encode()).hexdigest())
+                    else:
+                        key = None  # no identity to key on: collect per occurrence
+                    if key is not None:
+                        ops_present_keys.add(key)
+                        if key in seen_op_keys: continue
+                        seen_op_keys.add(key)
+                    else:
+                        ops_present_idless += 1
+                    if seg is None: continue
+                    if blk.get("name") == "Write":
+                        seg["ops"].append(("write", norm_path(inp.get("file_path", "?")), inp.get("content", "")))
+                    else:
+                        seg["ops"].append(("edit", norm_path(inp.get("file_path", "?")),
+                                           (inp.get("old_string", ""), inp.get("new_string", ""))))
     decision_events = []
     for call_id, call_input in decision_calls.items():
         res = decision_results.get(call_id)
@@ -316,6 +358,16 @@ def parse_session(path):
         "transcript_sha256": hashlib.sha256(transcript_bytes).hexdigest(),
         "earliest_ts": min(ts_all).isoformat() if ts_all else None,
         "decision_events": decision_events,
+        # Op-collection completeness (v0.1.4): Edit/Write ops present
+        # in the transcript (distinct collection keys: tool_use ids,
+        # or message-id-plus-fingerprint for id-less blocks; keyless
+        # blocks counted per occurrence) vs ops collected into the
+        # segment model. Equal on every known transcript shape since
+        # op collection moved outside the message-id dedupe; the
+        # pair is reported so any future loss is visible on the
+        # receipt itself (coverage block).
+        "ops_present_in_transcript": len(ops_present_keys) + ops_present_idless,
+        "ops_collected": sum(len(s["ops"]) for s in segments),
     }
 
 # ---------------------------------------------------------------- decision events
@@ -1405,6 +1457,12 @@ def code_receipt(session_path, label, repo_dir=None, repo_ref=None, recon_dir=No
         "edits_unapplied_no_match": stats["edits_unapplied_no_match"],
         "files_seeded_from_repo": stats["files_seeded"],
     }
+    if "ops_present_in_transcript" in meta:
+        # Op-collection completeness (v0.1.4, additive). Claude Code
+        # transcripts only: the Codex adapter reports its own channel
+        # counters below instead.
+        coverage["ops_present_in_transcript"] = meta["ops_present_in_transcript"]
+        coverage["ops_collected"] = meta["ops_collected"]
     coverage.update(meta.get("codex_coverage") or {})
     receipt = {
         "schema": SCHEMA,
@@ -1625,7 +1683,7 @@ def render_md(r):
                   f"- Active time: {m['active_minutes_gapcap300']} min (wall {m['wall_minutes']} min)",
                   f"- Tokens (deduped by message id): in {m['tokens_in_deduped']}, out {m['tokens_out_deduped']}",
                   f"- Verification lanes: test-like shell {m['verification_lanes']['test_like_shell']}, shell total {m['verification_lanes']['shell_total']}, browser-lane {m['verification_lanes']['browser_lane_actions']}",
-                  f"- Coverage: {c['writes']} writes, {c['edits_total']} edits — applied on transcript base {c['edits_applied_on_transcript_base']}, applied on repo-seeded base {c['edits_applied_on_repo_seeded_base']} ({c['files_seeded_from_repo']} files seeded" + (f", seed source: {c['seed_source']}" if c.get('seed_source') else "") + f"), unapplied no-base {c['edits_unapplied_no_base']}, unapplied no-match {c['edits_unapplied_no_match']}. A low-coverage receipt should be discounted by its reader.",
+                  f"- Coverage: {c['writes']} writes, {c['edits_total']} edits — applied on transcript base {c['edits_applied_on_transcript_base']}, applied on repo-seeded base {c['edits_applied_on_repo_seeded_base']} ({c['files_seeded_from_repo']} files seeded" + (f", seed source: {c['seed_source']}" if c.get('seed_source') else "") + f"), unapplied no-base {c['edits_unapplied_no_base']}, unapplied no-match {c['edits_unapplied_no_match']}" + (f". Op collection: {c['ops_collected']} of {c['ops_present_in_transcript']} Edit/Write ops present in the transcript were collected" if "ops_present_in_transcript" in c else "") + ". A low-coverage receipt should be discounted by its reader.",
                   "", "## Git join (the part authorship cannot tell you)", "",
                   f"- Final artifact: {g['files_at_head']} files, {g['final_nonblank_lines']} non-blank lines",
                   f"- First artifact-producing segment: segment {g['first_artifact_segment']}",
