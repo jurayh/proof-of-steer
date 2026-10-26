@@ -34,8 +34,8 @@ Hook mode, simulated documented SessionEnd payload
 | `.steering/STEERING.md` written | yes |
 | Receipt `schema` | `proof-of-steering/receipt@1.0` |
 | Receipt `harness` | `claude-code` |
-| `post_first_prompt_share_pct` | **86.4** (spike: 86.4) |
-| Blame vs provenance agreement | **99.5%** (spike: 99.5%) |
+| `post_first_prompt_share_pct` | **87.2** (spike: 86.4, on the pre-0.1.4 lossy parse) |
+| Blame vs provenance agreement | **99.9%** (spike: 99.5%, on the pre-0.1.4 lossy parse) |
 | Human turns | **40** (spike: 40) |
 | Coverage | 22 writes, 48 edits: 19 applied on transcript base, 0 seeded (0 files), 13 no-base, 16 no-match — the spike's exact accounting |
 | `hook.log` | `start` then `done` lines for the session, with the headline numbers |
@@ -52,7 +52,7 @@ documented `~/.claude/projects/<encoded cwd>/<session_id>.jsonl` layout:
 
 | Check | Result |
 |---|---|
-| `--cwd <repo> --latest --print-summary` | exit 0; prints harness, 40 human turns, 86.4% post-first-prompt share, 99.5% blame agreement, and both receipt paths |
+| `--cwd <repo> --latest --print-summary` | exit 0; prints harness, 40 human turns, 87.2% post-first-prompt share, 99.9% blame agreement, and both receipt paths |
 
 ## Capture flow (added with the capture adoption, 2026-10-25)
 
