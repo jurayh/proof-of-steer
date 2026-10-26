@@ -339,26 +339,47 @@ def corpus_file(d, prefix):
 class TestImpactRegression(unittest.TestCase):
     @needs_iceberg
     def test_iceberg_impact_matches_spike_exactly(self):
+        # Through 0.1.3 this test's name was literal: the shipped
+        # values matched the impact spike's exactly, because the
+        # spike's walker was a v1-replay variant and shared the
+        # parser's message-id dedupe loss. The 0.1.4 build collects
+        # all 114 of this session's Edit/Write ops (the spike-era
+        # parse collected 70), so the pinned values below are the
+        # complete-collection ones, and the per-segment divergence
+        # from the spike is enumerated in DIVERGED: every diverged
+        # segment moves from procedural/unmeasured/continuation to
+        # a measured class, on ops the old parse never collected.
+        # The mark is unchanged (Closely steered).
+        DIVERGED = {1: "continuation", 3: "reshaping", 6: "reshaping",
+                    7: "reshaping", 9: "reshaping", 14: "reshaping",
+                    16: "reshaping", 17: "reshaping", 20: "reshaping",
+                    22: "reshaping", 23: "reshaping", 24: "reshaping",
+                    25: "reshaping", 31: "reshaping", 32: "reshaping",
+                    33: "reshaping", 34: "reshaping", 37: "reshaping"}
         with tempfile.TemporaryDirectory() as tmp:
             r = sr.code_receipt(corpus_file(CC_DIR, "860618e1"), "v14-ice",
                                 recon_dir=Path(tmp) / "recon")
             g = r["git_join"]
-            self.assertEqual(g["headline_fields"]["post_first_prompt_share_pct"], 86.4)
-            self.assertEqual(g["blame_vs_memory_provenance_agreement_pct"], 99.5)
+            self.assertEqual(g["headline_fields"]["post_first_prompt_share_pct"], 87.2)
+            self.assertEqual(g["blame_vs_memory_provenance_agreement_pct"], 99.9)
             im = g["impact"]
-            self.assertEqual(im["procedural_turns"], 16)
-            self.assertEqual(im["continuation_turns"], 5)
-            self.assertEqual(im["reshaping_turns"], 11)
-            self.assertEqual(im["unmeasured_segments"], 8)
-            self.assertEqual(im["reshaping_share_pct"], 27.5)
-            self.assertEqual(im["reshaping_lines"], 344)
-            self.assertEqual(im["redirect_segments"], 9)
+            self.assertEqual(im["procedural_turns"], 9)
+            self.assertEqual(im["continuation_turns"], 3)
+            self.assertEqual(im["reshaping_turns"], 28)
+            self.assertEqual(im["unmeasured_segments"], 0)
+            self.assertEqual(im["reshaping_share_pct"], 70.0)
+            self.assertEqual(im["reshaping_lines"], 1622)
+            self.assertEqual(im["redirect_segments"], 11)
             self.assertIn("interactive Claude Code session", im["scope"])
             self.assertEqual(r["mark"]["category"], "Closely steered")
+            cov = r["mechanistic"]["coverage"]
+            self.assertEqual(cov["ops_present_in_transcript"], 114)
+            self.assertEqual(cov["ops_collected"], 114)
             classes = {s["segment"]: s["impact_class"] for s in g["per_segment"] if s["segment"] >= 0}
             spike = json.loads(IMPACT_RESULTS.read_text())
             want = {p["segment"]: p["class"] for p in spike["claude_code"]["860618e1"]["per_segment"]
                     if not p["pre_prompt"]}
+            want.update(DIVERGED)
             self.assertEqual(classes, want)
 
     @needs_cc
