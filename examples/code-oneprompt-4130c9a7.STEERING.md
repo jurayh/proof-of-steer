@@ -10,11 +10,11 @@ _Validation scope: Validated on trace-commons (28 sessions, full transcript-to-g
 - Active time: 16.3 min (wall 16.3 min)
 - Tokens (deduped by message id): in 128, out 61371
 - Verification lanes: test-like shell 0, shell total 8, browser-lane 0
-- Coverage: 28 writes, 11 edits — applied on transcript base 10, applied on repo-seeded base 0 (0 files seeded), unapplied no-base 1, unapplied no-match 0. A low-coverage receipt should be discounted by its reader.
+- Coverage: 34 writes, 12 edits — applied on transcript base 12, applied on repo-seeded base 0 (0 files seeded), unapplied no-base 0, unapplied no-match 0. Op collection: 46 of 46 Edit/Write ops present in the transcript were collected. A low-coverage receipt should be discounted by its reader.
 
 ## Git join (the part authorship cannot tell you)
 
-- Final artifact: 28 files, 3113 non-blank lines
+- Final artifact: 34 files, 3547 non-blank lines
 - First artifact-producing segment: segment 0
 - Share of HEAD introduced after that segment (headline): **0.0%**
 - Share of HEAD that is pre-existing (seeded from repo): 0.0%
@@ -31,4 +31,4 @@ _Validation scope: Validated on trace-commons (28 sessions, full transcript-to-g
 
 | segment | prompt chars | correction? | after error? | ops | lines introduced | lines surviving to HEAD |
 |---|---|---|---|---|---|---|
-| 0 | 818 | — | — | 39 | 3123 | 3113 |
+| 0 | 818 | — | — | 46 | 3559 | 3547 |
