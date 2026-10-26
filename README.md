@@ -93,7 +93,7 @@ The transcript is replayed turn by turn into a reconstructed local git repo, one
 
 What the samples in [examples/](examples/) show:
 
-- **Steered session** (`code-steered-860618e1`): 40 human turns, 12 of them correction prompts. **86.4%** of the shipped lines were introduced after the first prompt. Line authorship alone would call every line agent-typed and stop there.
+- **Steered session** (`code-steered-860618e1`): 40 human turns, 12 of them correction prompts. **87.2%** of the shipped lines were introduced after the first prompt. Line authorship alone would call every line agent-typed and stop there.
 - **One-prompt control** (`code-oneprompt-4130c9a7`): 1 human turn. **0.0%** of the shipped lines arrived after the first prompt. Same authorship label as the steered session, completely different receipt.
 
 ### Doc mode: a document in git
@@ -173,9 +173,10 @@ The field set was not asserted. It was tested, and some of it failed and got dem
 
 | Corpus | What was tested | Result |
 |---|---|---|
-| trace-commons, 28 Claude Code sessions | Full transcript-to-git join, replay provenance checked against `git blame` | Blame agreement 99.5 to 100%. Steered sessions separate from one-prompt controls on the headline field (batch medians 0.0% for sessions of 2 turns or fewer, 77.2% for 10 or more) |
+| trace-commons, 28 Claude Code sessions | Full transcript-to-git join, replay provenance checked against `git blame` | Blame agreement ~100% (99.9% on the flagship session at complete op collection). Steered sessions separate from one-prompt controls on the headline field (batch medians 0.0% for sessions of 2 turns or fewer, 77.2% for 10 or more) |
 | SWE-chat (SALT-NLP), 17,968 sessions | Published steering statistics reproduced at scale | Steering presence validated, dose not: one-prompt sessions sit at 0.0, continued sessions near 0.75, pushback sessions near 0.97, and the value saturates. Published survival not reproduced, so survival stays a context field, stratified by agent |
 | CoAuthor, 1,447 writing sessions (CHI 2022) | Doc mode against keystroke-level ground truth: hide the keystrokes, keep only snapshots, score the map | Per-part labels validated: 88.3% sentence-level agreement, false-untouched rate about 0.05%. The headline percentage is a floor, not a dose |
+| False one-shot validation, 271 genuinely steered sessions (trace-commons + a SWE-chat sample) | How often the steering mark calls genuinely steered work One-shot, with ground truth built independently of the mark's own inputs | 82 of 271 (30.3%) after the 0.1.4 op-collection fix, and every observed case is a coverage failure, not a boundary error: the steering happened where the measurement could not see it. One-prompt controls read above One-shot 3 times in 257, each a two-turn session whose second turn did genuine work |
 
 Full reports and methods live with the project history. The current validated scope is also printed on every receipt in its `validation_scope` field.
 
@@ -185,6 +186,7 @@ Full reports and methods live with the project history. The current validated sc
 - **The doc-mode rejection blind spot.** Revision history only shows what was written and later changed. Rejected suggestions and dismissed drafts never enter the history, so doc-mode steering evidence is a lower bound on interaction. A quiet history does not prove a quiet process.
 - **Per-harness numbers do not pool.** Pushback and survival rates differ sharply by agent harness (in SWE-chat, pushback runs 21% for one agent to 60% for another). Receipts carry a `harness` field, and those context fields should only be compared within one harness.
 - **Reconstruction is partial.** Edit replay can miss edits whose base it cannot establish. That is why coverage is a headline field rather than a footnote.
+- **The mark under-claims by design.** It would rather miss real steering than certify steering that was not there. Measured on genuinely steered sessions, it reads One-shot about three times in ten (82 of 271 across two code corpora), always because the steering sat outside what could be measured. Read One-shot as a coverage statement, not a character judgment: it means no steering was measured, and the receipt's coverage block, including whether every Edit and Write op in the transcript was collected, says how much of the session could be measured at all. A One-shot mark with thin coverage is a receipt declining to testify, and it should be priced that way.
 
 ## The bound this design respects
 
@@ -204,7 +206,7 @@ One honest break in the analogy, stated plainly. A public key is unforgeable and
 python3 -m unittest discover -s tests
 ```
 
-Sixty-six tests, standard library only, including fixtures that pin the seeding behavior, the sentence-share computation, the floor wording on rendered receipts, the Codex adapter, the provider registry and fixture histories, the impact classification, the steering mark boundaries, the hash-commitment round trip, the decision points, and the capture flow: record round trips through a bare remote, tamper flags at both verification tiers, the notes-only partial receipt, and the amend behaviour.
+Seventy-four tests, standard library only, including fixtures that pin the seeding behavior, the sentence-share computation, the floor wording on rendered receipts, the Codex adapter, the provider registry and fixture histories, the impact classification, the steering mark boundaries, the hash-commitment round trip, the decision points, op collection outside the message-id dedupe with its completeness fields, and the capture flow: record round trips through a bare remote, tamper flags at both verification tiers, the notes-only partial receipt, and the amend behaviour.
 
 ## License
 
