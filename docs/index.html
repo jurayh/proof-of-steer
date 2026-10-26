@@ -248,7 +248,7 @@ a{color:var(--first)}
   <div class="grid">
     <div class="mode">
       <h3>Code sessions</h3>
-      <p class="num">86.4% <small>of shipped lines arrived after the first prompt</small></p>
+      <p class="num">87.2% <small>of shipped lines arrived after the first prompt</small></p>
       <p>The sample steered session ran <strong>40 human turns</strong>, 12 of them correction prompts, and shipped 21 files with 2,907 lines. The one-prompt control shipped a similar sized artifact with 1 turn and a post-first share of <strong>0.0%</strong>. Authorship calls both of them identical. The receipt does not.</p>
       <p class="muted">Claude Code transcripts and Codex rollouts are both supported, and the format is detected automatically.</p>
     </div>
@@ -351,7 +351,7 @@ python3 steering_receipt.py code path/to/session.jsonl --label my-session --repo
     <tr>
       <td>trace-commons, 28 Claude Code sessions</td>
       <td>Full transcript to git join, with replay provenance checked against <code>git blame</code></td>
-      <td>Blame agreement 99.5 to 100%. Steered sessions separate from one-prompt controls on the headline field, with batch medians of 0.0% for sessions of 2 turns or fewer and 77.2% for 10 or more.</td>
+      <td>Blame agreement ~100% (99.9% on the flagship session at complete op collection). Steered sessions separate from one-prompt controls on the headline field, with batch medians of 0.0% for sessions of 2 turns or fewer and 77.2% for 10 or more.</td>
     </tr>
     <tr>
       <td>SWE-chat (SALT-NLP), 17,968 sessions</td>
@@ -362,6 +362,11 @@ python3 steering_receipt.py code path/to/session.jsonl --label my-session --repo
       <td>CoAuthor, 1,447 writing sessions (CHI 2022)</td>
       <td>Doc mode against keystroke-level ground truth, scored with the keystrokes hidden</td>
       <td>Per-part labels validated, with 88.3% sentence-level agreement and a false-untouched rate of about 0.05%. The headline percentage is a floor, not a dose.</td>
+    </tr>
+    <tr>
+      <td>False one-shot validation, 271 genuinely steered sessions</td>
+      <td>How often the steering mark calls genuinely steered work One-shot, ground truth built independently of the mark's own inputs</td>
+      <td>82 of 271 (30.3%) after the 0.1.4 op-collection fix, every observed case a coverage failure rather than a boundary error. One-prompt controls read above One-shot 3 times in 257, each a two-turn session whose second turn did genuine work.</td>
     </tr>
   </table>
   <p class="muted">The validated scope travels with the evidence. It is printed on every receipt in its <code>validation_scope</code> field.</p>
@@ -381,6 +386,7 @@ python3 steering_receipt.py code path/to/session.jsonl --label my-session --repo
     <li><strong>The doc-mode rejection blind spot.</strong> Revision history only shows what was written and later changed. Rejected suggestions and dismissed drafts never enter it, so doc-mode steering evidence is a lower bound on interaction. A quiet history does not prove a quiet process.</li>
     <li><strong>Per-harness numbers do not pool.</strong> Pushback and survival rates differ sharply by agent harness. In SWE-chat, pushback runs 21% for one agent to 60% for another. Receipts carry a <code>harness</code> field, and context fields should only be compared within one harness.</li>
     <li><strong>Reconstruction is partial.</strong> Edit replay can miss edits whose base it cannot establish. Coverage is printed on every receipt, so a thin receipt discounts itself.</li>
+    <li><strong>The mark under-claims by design.</strong> It would rather miss real steering than certify steering that was not there. Measured on genuinely steered sessions it reads One-shot about three times in ten (82 of 271), always because the steering sat outside what could be measured. Read One-shot as a coverage statement, not a character judgment: it means no steering was measured, and the coverage block, including whether every Edit and Write op in the transcript was collected, says how much of the session could be measured at all. A One-shot mark with thin coverage is a receipt declining to testify, and it should be priced that way.</li>
     <li><strong>The bound this design respects.</strong> Purdue and its paper Likelihood Is Not Authorship (arXiv:2610.19767) shows that transcript-only likelihood scores cannot certify who authored a text. This tool makes no authorship claim and computes no such probability. It counts observable events and reports them as evidence.</li>
   </ul>
 </section>
