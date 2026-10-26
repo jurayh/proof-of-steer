@@ -22,7 +22,14 @@ emitted behind the opt-in `--commitment` flag, so the schema id stays
 The decisions adoption (Oct 25, 2026) is likewise purely additive: code
 receipts gain a top-level `decisions` block (see the decision points
 section below) and document receipts are unchanged, so the schema id
-stays `receipt@1.0`.)
+stays `receipt@1.0`.
+The v0.1.4 changes (Oct 26, 2026) are likewise purely additive: Claude
+Code code receipts gain coverage `ops_present_in_transcript` and
+`ops_collected` (see the coverage table below), so the schema id
+stays `receipt@1.0`. The same build moves Edit/Write op collection
+outside the parser's message-id dedupe, keyed by `tool_use` id; that
+changes no field's meaning, only the completeness of what the
+existing fields are computed from.)
 Emitted by `steering_receipt.py` as `<label>.receipt.json`, with a rendered
 `<label>.STEERING.md` alongside. Stdlib-only, computed locally; a receipt
 never contains raw prompt text, tool arguments, or file contents — counts,
@@ -118,6 +125,8 @@ the in-memory line provenance.
 | `edits_unapplied_no_base` | Edits whose target file was never Written and could not be seeded (no `--repo`, or no suffix match in it). |
 | `edits_unapplied_no_match` | Edits whose base existed but `old_string` was not found in the reconstructed state. |
 | `files_seeded_from_repo` | Distinct files seeded from `--repo`. |
+| `ops_present_in_transcript` | (Claude Code only, v0.1.4, additive) Edit/Write ops present in the transcript, counted over every assistant record, including block-records the message-id dedupe steps over for token math. Ops are keyed by `tool_use` id; an id-less op block keys on its message id plus a fingerprint of the call (so a re-emitted record counts once and a distinct block counts separately), and a block with neither keys per occurrence. |
+| `ops_collected` | (Claude Code only, v0.1.4, additive) Edit/Write ops collected into the segment model under the same keying, so a re-emitted op is collected exactly once. Equals `ops_present_in_transcript` on every known transcript shape since collection moved outside the dedupe; any gap between the two is op-collection loss, printed on the receipt itself rather than only discoverable against the raw transcript. |
 | `patch_calls` | (Codex only, v1.3) `apply_patch` tool calls in the rollout. |
 | `patch_calls_failed` | (Codex only) Patch calls whose tool output reports failure (`apply_patch verification failed…`, or a `patch_apply_end` with `success: false`). `apply_patch` is atomic, so a failed call's ops are dropped whole — none enter the join. |
 | `patch_calls_unresolved` | (Codex only) Patch calls with neither a tool output nor a `patch_apply_end` event (truncated rollout tail). Their ops are included and this counter flags them. |
