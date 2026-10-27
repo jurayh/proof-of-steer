@@ -373,6 +373,64 @@ python3 steering_receipt.py code path/to/session.jsonl --label my-session --repo
 </section>
 
 <section>
+  <h2>Three different questions</h2>
+  <p>Detectors, authorship tools, and platform metrics all get asked the reviewer's question, and each of them answers a different one. The difference is not accuracy. It is what each one is looking at.</p>
+  <table>
+    <tr><th></th><th>AI text detectors (Pangram)</th><th>Line authorship (Git AI)</th><th>Session archives and acceptance metrics (Entire, Anthropic)</th><th>Steering receipts (proof-of-steer)</th></tr>
+    <tr>
+      <td><strong>The question</strong></td>
+      <td>Did a model write this text?</td>
+      <td>Which lines did the AI type?</td>
+      <td>How much agent output got accepted?</td>
+      <td>How much human steering shaped this artifact?</td>
+    </tr>
+    <tr>
+      <td><strong>What it examines</strong></td>
+      <td>The finished text alone</td>
+      <td>The final code, with authorship recorded as it was written</td>
+      <td>Platform-side session and acceptance telemetry</td>
+      <td>The session transcript joined to the artifact's history, or steering records captured at commit time</td>
+    </tr>
+    <tr>
+      <td><strong>Its ground truth</strong></td>
+      <td>A trained guess at the process. Pangram's own mixed-text labels come from comparing an original document to its edited version clause by clause, so the detector learns to infer what a process record would have said</td>
+      <td>The write-time record of who produced each line</td>
+      <td>The platform's own logs</td>
+      <td>The process record itself: turns, corrections, decisions, revision provenance</td>
+    </tr>
+    <tr>
+      <td><strong>Steering that left no lines</strong> (a correction that changed the plan, an option refused)</td>
+      <td>Invisible</td>
+      <td>No slot for it; authorship counts lines</td>
+      <td>Accept and reject counts only</td>
+      <td>The unit it counts</td>
+    </tr>
+    <tr>
+      <td><strong>Needs the author's cooperation</strong></td>
+      <td>No; it scans anyone's text</td>
+      <td>Yes; installed where the work happens</td>
+      <td>The platform sees it either way</td>
+      <td>Yes; sender-side and voluntary, like signing a commit</td>
+    </tr>
+    <tr>
+      <td><strong>Privacy</strong></td>
+      <td>Text is uploaded for scanning</td>
+      <td>Runs in the repo; the notes travel with the repo</td>
+      <td>Telemetry lives with the platform</td>
+      <td>Local only; the receipt is derived and safe to share, the transcript never leaves the machine</td>
+    </tr>
+    <tr>
+      <td><strong>Characteristic failure</strong></td>
+      <td>Confident on wholesale generation, blind to process: in Pangram's own tests, heavily AI-rewritten human essays still read as fully human 41% of the time</td>
+      <td>Precise about typing, silent about judgment: the steered session and the one-prompt control both read 100% agent-typed</td>
+      <td>Acceptance is not steering: a rubber stamp and a hard negotiation both count as accepted</td>
+      <td>Under-claims when coverage is thin: it read One-shot on 82 of 271 genuinely steered sessions, every case a coverage failure, and the coverage is printed on the receipt so the reader can price it</td>
+    </tr>
+  </table>
+  <p>None of these makes the others useless. A detector answers its question well, and where no process record exists it may be the only instrument available. But where the record exists, nobody needs the guess.</p>
+</section>
+
+<section>
   <h2>Your transcript is the private key. The receipt is the public one.</h2>
   <p>A session transcript is radioactive. It holds your code, your other projects, your half-formed thinking, and whatever you pasted at 1am. You could share it to prove you steered, the same way you could prove your identity by handing over your private key. Nobody sane does either.</p>
   <p>proof-of-steer is <strong>private by construction, not by policy</strong>. Everything runs on your machine and nothing is uploaded anywhere. The receipt is derived from the private material and is safe to publish for the same reason a public key is. It carries counts, categories, file names, and line attributions, and never prompt text, tool arguments, or file contents. Anyone can check every claim on it without seeing the session it came from, and sharing is per artifact and sender-controlled. Publish a receipt for one pull request and everything else stays private.</p>
