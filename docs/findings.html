@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What the sessions say — proof-of-steer findings</title>
+<meta name="description" content="Validated findings from the sessions behind proof-of-steer, each tied to its source report.">
+<style>
+:root{
+  --ink:#17222e; --muted:#5c6b7a; --line:#dde4ea; --card:#ffffff;
+  --first:#46689e; --follow:#2f8f83; --corr:#e07a3f; --err:#c94f5e;
+  --bg:#f6f8fa; --soft:#eef2f5; --warmbg:#fdeee1; --warmink:#a34d12;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  line-height:1.6;font-size:16.5px}
+.wrap{max-width:960px;margin:0 auto;padding:0 22px}
+header{padding:64px 0 30px;text-align:left}
+h1{font-size:44px;line-height:1.12;margin:0 0 6px;letter-spacing:-.01em}
+.tagline{font-size:21px;font-weight:650;margin:0 0 14px}
+.lede{font-size:18.5px;color:var(--muted);max-width:640px;margin:0 0 26px}
+section{padding:34px 0}
+section + section{border-top:1px solid var(--line)}
+h2{font-size:27px;line-height:1.25;margin:0 0 12px;letter-spacing:-.01em}
+h3{font-size:18px;margin:22px 0 8px}
+p{margin:0 0 14px;max-width:700px}
+.muted{color:var(--muted)}
+.big{font-size:20px;line-height:1.5;max-width:720px}
+.num{font-size:30px;font-weight:700;line-height:1.2}
+.num small{font-size:14px;font-weight:600;color:var(--muted)}
+.source{font-size:14px;color:var(--muted)}
+footer{padding:30px 0 46px;color:var(--muted);font-size:13.5px;border-top:1px solid var(--line)}
+footer a{color:var(--first)}
+a{color:var(--first)}
+@media (max-width:720px){
+  h1{font-size:34px}
+  header{padding:44px 0 22px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>What the sessions say</h1>
+  <p class="tagline">Findings, not claims.</p>
+  <p class="lede">Every finding below was measured on a named corpus, and every number is tied to the report that measured it. Nothing on this page is a new result. Where a number is a presence signal or a floor rather than a dose, it says so.</p>
+  <p><a href="index.html">&larr; Back to proof-of-steer</a></p>
+</header>
+
+<section>
+  <h2>Most interactive turns move no files</h2>
+  <p class="num">52.8% <small>of human turns are procedural</small></p>
+  <p>In the trace-commons Claude Code sessions, 207 of 392 human turns are procedural: no file operation followed the prompt at all. Approvals, answers, and discussion are real interaction, but they leave no lines. A raw turn count therefore overstates steering before any other correction.</p>
+  <p class="source">Corpus: trace-commons, 28 Claude Code sessions, 392 segments. Source: <code>impact-spike/REPORT.md</code>, per-class distributions table.</p>
+</section>
+
+<section>
+  <h2>The headline field detects presence, not dose</h2>
+  <p>At SWE-chat scale, the post-first-prompt share separates one-prompt work from steered work, and then saturates. It is a steering-presence detector, not a steering-dose meter, and must not be read as a score.</p>
+  <p class="num">0.0 <small>median, one-prompt sessions</small></p>
+  <p class="num">0.754 <small>median, continued sessions with no pushback turns</small></p>
+  <p class="num">0.967 <small>median, sessions with any pushback turn</small></p>
+  <p>Within pushback sessions, more pushback does not read higher: the high-pushback group sits below the low-pushback group. The presence boundary separates; dose within steered sessions does not.</p>
+  <p class="source">Corpus: SWE-chat (SALT-NLP), 17,968 sessions; the headline-field analysis in section 6 uses the sessions carrying prompt attributions, with the pushback grouping over the multi-segment sessions that have both labels and attributions (330 no-pushback, 1,912 any-pushback). Source: <code>swe-chat/VALIDATION.md</code>, section 6. The same conclusion is stated in the Evidence section of <code>site/index.html</code>.</p>
+</section>
+
+<section>
+  <h2>At decision points, users usually take the marked recommendation, and sometimes refuse the question</h2>
+  <p class="num">70.7% <small>followed, of questions where a recommendation was marked</small></p>
+  <p>When an agent marks a recommended option, users take it about seven times in ten. That rate is read only against the marked subset: agents mark inconsistently, so the denominator travels with the number. In SWE-chat, a recommendation was marked on only 4,327 of 10,739 questions (40.3%). A listed pick on an unmarked question is not evidence about recommendations.</p>
+  <p class="num">6.8% <small>of SWE-chat decision calls were rejected as posed</small></p>
+  <p>587 of 8,597 Claude Code decision calls in SWE-chat were refused by the user as posed. Rejected calls are counted separately and never folded into the answered-question classes.</p>
+  <p class="source">Corpus: SWE-chat, Claude Code only, 12,418 sessions and 8,597 decision calls (of 17,968 SWE-chat sessions across all agents); pooled marked subset 4,328 questions. Source: <code>decision-spike/REPORT.md</code>, base rates and the marked subset.</p>
+</section>
+
+<section>
+  <h2>The steering mark under-claims, and says so</h2>
+  <p class="num">82 of 271 (30.3%) <small>genuinely steered sessions read One-shot</small></p>
+  <p>After the 0.1.4 op-collection fix, 82 of 271 genuinely steered code sessions still read One-shot. Every observed case was a coverage failure, not a boundary error: the steering happened where the measurement could not see it, in edits to files an unseeded reconstruction had no base for. The receipt prints its coverage, including whether every Edit and Write op in the transcript was collected, so a reader can price a One-shot mark by how much of the session could be measured at all.</p>
+  <p>The mark almost never over-claims in the other direction: one-prompt controls read above One-shot 3 times in 257, each a two-turn session whose second turn did genuine work.</p>
+  <p class="source">Corpus: false one-shot validation, pooled code mode, 271 genuinely steered sessions (21 trace-commons interactive Claude Code, 250 sampled SWE-chat Claude Code) and 257 controls. Source: <code>false-oneshot-validation/ADDENDUM.md</code> (v0.1.4 re-run), headline table and cause split; original run in <code>false-oneshot-validation/REPORT.md</code>.</p>
+</section>
+
+<section>
+  <h2>For documents, the map is precise and the headline is a floor</h2>
+  <p class="num">88.3% <small>sentence-level agreement with keystroke-level ground truth</small></p>
+  <p>Doc mode's per-part labels, which parts of a document are unchanged from its first version, agree with keystroke-level ground truth on 88.3% of sentences. The headline percentage, by contrast, is a floor on the untouched share, not a dose estimate: it understates the untouched share and moves with revision granularity, so it must be read as at least that much surviving verbatim, never as how much steering happened.</p>
+  <p class="source">Corpus: CoAuthor, 1,447 writing sessions (Lee et al., CHI 2022). Source: <code>coauthor/VALIDATION-coauthor.md</code>, sections 4.2 and 5.</p>
+</section>
+
+<section>
+  <h2>One steered session, one control, side by side</h2>
+  <p>The flagship session is IceBerg, an interactive Claude Code session. The control is a one-prompt session from the same corpus. Line authorship calls both of them identical: 100% agent-typed. The receipt does not.</p>
+  <p class="num">87.2% <small>of shipped lines arrived after the first prompt, steered session</small></p>
+  <p>Steered session: 40 human turns, 12 of them correction prompts, 28 files, 3,102 lines, blame agreement 99.9%, steering mark Closely steered.</p>
+  <p class="num">0.0% <small>of shipped lines arrived after the first prompt, one-prompt control</small></p>
+  <p>Control: 1 human turn, post-first share 0.0%, steering mark One-shot.</p>
+  <p class="source">Corpus: trace-commons, sessions 860618e1 (steered) and 4130c9a7 (control). Source: <code>release/examples/code-steered-860618e1.STEERING.md</code> and <code>release/examples/code-oneprompt-4130c9a7.STEERING.md</code> (v0.1.4 receipts), and the 0.1.4 regression in <code>v1/BUILD-NOTES.md</code>. The same pair is shown in the Two modes section of <code>site/index.html</code>.</p>
+</section>
+
+<section>
+  <h2>How to read this page</h2>
+  <p>Three rules travel with every number here. Presence is not dose: a field that separates steered from one-prompt work does not measure how much the steering was worth. A floor is not an estimate: a doc headline says at least that much survived, not exactly that much. And coverage qualifies the mark: a One-shot mark on a thin receipt is a receipt declining to testify, not a judgment on the work.</p>
+</section>
+
+<footer>
+  <p><a href="index.html">proof-of-steer</a> · MIT license · Steered, not slop.</p>
+</footer>
+
+</div>
+</body>
+</html>
