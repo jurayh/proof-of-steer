@@ -9,6 +9,7 @@ inline CSS/JS, zero external assets, no network.
 Usage:
   python3 steering_viz.py receipt.json [more.json ...] -o out.html
   python3 steering_viz.py doc.receipt.json --disclosure -o disclosure.md
+  python3 steering_viz.py --shadow steered.jsonl control.jsonl [--doc doc.receipt.json] -o shadow.html
 
 Visual model:
   - Code receipts render as a steering timeline (one block per human-turn
@@ -447,8 +448,216 @@ def badge_svg(r):
 </svg>
 """
 
+SHADOW_CSS = """
+.sh-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+@media(max-width:840px){.sh-grid{grid-template-columns:1fr}}
+.sh-panel{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:20px 20px 16px;box-shadow:0 1px 2px rgba(23,34,46,.04)}
+.sh-panel h2{font-size:19px;margin:0 0 2px;letter-spacing:-.01em}
+.sh-panel .kind{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.sh-row{display:flex;align-items:center;gap:10px;margin:5px 0;font-size:12.5px}
+.sh-name{flex:0 0 46%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.sh-name .dir{color:var(--muted)}
+.sh-track{flex:1;height:13px;border-radius:4px;overflow:hidden;display:flex;background:#20262e}
+.sh-lit{background:var(--first)}
+.sh-num{flex:0 0 118px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.sh-note{font-size:12.5px;color:var(--muted);margin:10px 0 0;line-height:1.5}
+.sh-caption{font-size:16px;line-height:1.55;margin:20px 0 4px}
+.sh-foot{color:var(--muted);font-size:12px;margin-top:14px;line-height:1.6}
+@media(max-width:640px){.sh-name{flex-basis:38%}.sh-num{flex-basis:96px}}
+"""
+
+def shadow_rows_from_files(files, fas_idx):
+    """Per-file first-segment line counts from a replay's files dict
+    (path -> list of (line, origin segment)), the same in-memory
+    provenance the receipt headline is computed from. Sorted largest
+    first. Only non-blank lines count, matching the receipt."""
+    rows = []
+    for fp, v in files.items():
+        final = sum(1 for l, _ in v if l.strip())
+        lit = sum(1 for l, o in v if l.strip() and o == fas_idx)
+        rows.append({"file": fp, "final_lines": final, "lit_lines": lit})
+    rows.sort(key=lambda r: -r["final_lines"])
+    return rows
+
+def shadow_replay_session(session_path):
+    """Replay one session with the shipped tool's own functions and
+    return (rows, summary). No new provenance logic is introduced here."""
+    import steering_receipt as sr
+    fmt = sr.detect_format(session_path)
+    if fmt == "codex":
+        segments, meta = sr.parse_codex_session(session_path)
+    else:
+        segments, meta = sr.parse_session(session_path)
+    files, stats, introduced, seeded_bases = sr.apply_ops(segments, None)
+    fas_idx = segments[0]["idx"]
+    rows = shadow_rows_from_files(files, fas_idx)
+    turns = sum(1 for s in segments if not s.get("pre_prompt"))
+    return rows, {"turns": turns,
+                  "final_lines": sum(r["final_lines"] for r in rows),
+                  "lit_lines": sum(r["lit_lines"] for r in rows)}
+
+def shadow_doc_rows(doc_receipt):
+    """Per-section first-version line counts for a document receipt.
+    Lit lines are exactly the lines introduced by revision 1, taken
+    from the receipt's own introduced_by_revision maps, in document
+    order (not sorted: a document reads top to bottom)."""
+    rows = []
+    for s in doc_receipt["per_section"]:
+        lit = sum(n for k, n in s["introduced_by_revision"].items()
+                  if k.split()[0] == "rev1")
+        rows.append({"section": s["section"], "final_lines": s["final_lines"],
+                     "lit_lines": lit})
+    return rows
+
+def _shadow_row_html(name, final, lit, scale_max, lit_noun):
+    p = name.replace("\\", "/")
+    base = p.rsplit("/", 1)[-1]
+    d = p[: len(p) - len(base)]
+    outer_w = 100 * final / scale_max if scale_max else 0
+    lit_w = 100 * lit / final if final else 0
+    tip = (f"<b>{esc(p)}</b><br>{final:,} final lines<br>"
+           f"{lit:,} {lit_noun} · {final - lit:,} arrived later")
+    pct = 100 * lit / final if final else 0
+    return (
+        f'<div class="sh-row"><div class="sh-name" data-tip="{esc(tip)}">'
+        f'<span class="dir">{esc(d)}</span>{esc(base)}</div>'
+        f'<div class="sh-track" style="width:{outer_w:.2f}%" data-tip="{esc(tip)}">'
+        f'<div class="sh-lit" style="width:{lit_w:.1f}%"></div></div>'
+        f'<div class="sh-num">{final:,} lines · {pct:.0f}% first</div></div>')
+
+def _shadow_panel(title, kind, summary, rows, scale_max, note):
+    total_final, total_lit = summary["final_lines"], summary["lit_lines"]
+    lit_pct = 100 * total_lit / total_final if total_final else 0
+    body = "".join(_shadow_row_html(r["file"], r["final_lines"], r["lit_lines"],
+                                    scale_max, "from the first prompt")
+                     for r in rows)
+    return f"""
+<div class="sh-panel">
+  <div class="kind">{esc(kind)}</div>
+  <h2>{esc(title)}</h2>
+  <p class="headline"><b>{total_lit:,}</b> of <b>{total_final:,}</b> lines lit
+    (<b>{lit_pct:.1f}%</b>) · {summary["turns"]} human turn{'s' if summary['turns'] != 1 else ''}</p>
+  {body}
+  <p class="sh-note">{esc(note)}</p>
+</div>"""
+
+def shadow_html(steered, control, doc=None):
+    """Build the counterfactual shadow figure. steered and control are
+    dicts with title, turns, rows; doc is an optional dict with title,
+    rows, and totals. All numbers come from the caller's measured data;
+    this function only lays them out."""
+    scale_max = max([r["final_lines"] for r in steered["rows"] + control["rows"]] or [1])
+    s_lit_files = [r for r in steered["rows"] if r["lit_lines"] > 0]
+    if steered["lit_lines"] == steered["final_lines"]:
+        s_note = "Every line in every file is lit."
+    else:
+        s_note = ("Lit lines live in %d of %d files: " % (len(s_lit_files), len(steered["rows"]))
+                  + ", ".join(f"{r['file']} ({r['lit_lines']})" for r in s_lit_files) + ".")
+    if control["lit_lines"] == control["final_lines"]:
+        c_note = "Every line in every file is lit."
+    else:
+        c_lit_files = [r for r in control["rows"] if r["lit_lines"] > 0]
+        c_note = ("Lit lines live in %d of %d files: " % (len(c_lit_files), len(control["rows"]))
+                  + ", ".join(f"{r['file']} ({r['lit_lines']})" for r in c_lit_files) + ".")
+    s = steered
+    c = control
+    caption = (
+        "The lit part is what the first prompt built. In the steered session only "
+        f"{s['lit_lines']:,} of {s['final_lines']:,} lines survive from the first prompt. "
+        "Everything dark arrived in later turns. In the one-prompt control the shadow "
+        "equals the artifact, because nothing arrived after the first prompt. "
+        "Line authorship calls both artifacts identical. The shadow shows they are not.")
+    doc_section = ""
+    if doc is not None:
+        d_scale = max([r["final_lines"] for r in doc["rows"]] or [1])
+        d_rows = "".join(_shadow_row_html(r["section"], r["final_lines"], r["lit_lines"],
+                                          d_scale, "from the first version")
+                           for r in doc["rows"])
+        d_lit_pct = 100 * doc["lit_lines"] / doc["final_lines"] if doc["final_lines"] else 0
+        d_with = sum(1 for r in doc["rows"] if r["lit_lines"] > 0)
+        doc_section = f"""
+<h3 style="margin-top:26px">The same shadow on a document</h3>
+<div class="sh-panel">
+  <div class="kind">Document · {esc(doc['title'])}</div>
+  <p class="headline"><b>{doc['lit_lines']:,}</b> of <b>{doc['final_lines']:,}</b> lines lit
+    (<b>{d_lit_pct:.1f}%</b>) · {d_with} of {len(doc['rows'])} sections carry lines from the first version</p>
+  {d_rows}
+  <p class="sh-note">Lit lines survive verbatim from the first version. Dark lines arrived in later revisions.</p>
+</div>
+<p class="sh-caption">The same shadow falls on a document. In {esc(doc['title'])}
+  {doc['lit_lines']:,} of {doc['final_lines']:,} lines survive from the first version. Lit sections
+  carry judgment from the first draft. Dark sections arrived in later revisions.</p>"""
+    return f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Counterfactual shadow</title><style>{CSS}{SHADOW_CSS}</style></head><body><div class="wrap">
+<h1>Counterfactual shadow</h1>
+<p class="sub">Each strip is one file, length proportional to its final lines on a shared scale.
+Blue is lit: lines the first prompt introduced that survive to the final artifact.
+Dark is everything that arrived in later turns.</p>
+<div class="legend"><span><span class="sw" style="background:var(--first)"></span><b>Lit</b> · from the first prompt</span>
+<span><span class="sw" style="background:#20262e"></span><b>Dark</b> · arrived in later turns</span></div>
+<div class="sh-grid">
+{_shadow_panel("Steered session", "Code · steered", s, s["rows"], scale_max, s_note)}
+{_shadow_panel("One-prompt control", "Code · control", c, c["rows"], scale_max, c_note)}
+</div>
+<p class="sh-caption">{esc(caption)}</p>
+{doc_section}
+<p class="sh-foot">Method: a lit line is a line the first segment introduced that survives to the
+final artifact, measured by the same line provenance behind the receipt headline. The document
+panel lights lines that survive from the first version. Only non-blank lines count. No external
+assets. No prompt text.</p>
+<div id="tip"></div><script>{JS}</script>
+</div></body></html>"""
+
+def shadow_main(argv):
+    """CLI: steerprint --shadow steered.jsonl control.jsonl [--doc doc.receipt.json] -o shadow.html.
+    Sessions are replayed with the shipped tool's own functions; the doc
+    panel, when given, reads its rows from the doc receipt itself."""
+    args = list(argv)
+    out_path = Path("counterfactual-shadow.html")
+    if "-o" in args:
+        out_path = Path(args[args.index("-o") + 1])
+    doc_path = None
+    if "--doc" in args:
+        doc_path = args[args.index("--doc") + 1]
+    pos = []
+    skip_next = False
+    for a in args:
+        if skip_next:
+            skip_next = False
+            continue
+        if a in ("-o", "--doc"):
+            skip_next = True
+            continue
+        if a.startswith("-"):
+            continue
+        pos.append(a)
+    if len(pos) != 2:
+        sys.exit("--shadow takes exactly two sessions: steered, then control")
+    s_rows, s_sum = shadow_replay_session(Path(pos[0]))
+    c_rows, c_sum = shadow_replay_session(Path(pos[1]))
+    steered = {"title": "Steered session", "rows": s_rows, **s_sum}
+    control = {"title": "One-prompt control", "rows": c_rows, **c_sum}
+    doc = None
+    if doc_path:
+        r = json.loads(Path(doc_path).read_text(encoding="utf-8"))
+        d_rows = shadow_doc_rows(r)
+        src = (r.get("source") or "").split("::")[-1].strip()
+        doc_title = Path(src).name if src else r["label"]
+        doc = {"title": doc_title, "rows": d_rows,
+               "final_lines": sum(x["final_lines"] for x in d_rows),
+               "lit_lines": sum(x["lit_lines"] for x in d_rows)}
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(shadow_html(steered, control, doc), encoding="utf-8")
+    print(f"wrote shadow {out_path} ({out_path.stat().st_size:,} bytes)")
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if "--shadow" in argv:
+        shadow_main(argv)
+        return
     args = [a for a in argv if not a.startswith("-")]
     out_path = Path("collaboration-map.html")
     if "-o" in argv:
