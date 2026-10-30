@@ -8,6 +8,7 @@ inline CSS/JS, zero external assets, no network.
 
 Usage:
   python3 steering_viz.py receipt.json [more.json ...] -o out.html
+  python3 steering_viz.py doc.receipt.json --disclosure -o disclosure.md
 
 Visual model:
   - Code receipts render as a steering timeline (one block per human-turn
@@ -271,6 +272,145 @@ MARK_COLOURS = {"One-shot": "#5c6b7a", "Prompted": "#46689e",
 IMPACT_COLOURS = {"procedural": "#cdd6df", "continuation": "#2f8f83",
                   "reshaping": "#e07a3f", "unmeasured": "#ffffff"}
 
+# ---------------------------------------------------------------- disclosure mode
+# A short, paste-ready disclosure block for a DOCUMENT receipt, generated
+# from the receipt JSON only. No receipt computation is repeated here: every
+# number below is read from the receipt, so the block cannot drift from it.
+#   python3 steering_viz.py doc.receipt.json --disclosure -o disclosure.md
+# Sections are grouped, never listed as a full table: unchanged since the
+# first version, arrived in later revisions, reshaped after first appearing.
+# The reshaped group reproduces the receipt's own mark count. The mark's
+# rule (see steering_receipt.doc_mark) requires the section heading to
+# survive unchanged, so when more sections gained lines later than the mark
+# counts as reshaped, the block says so instead of claiming the larger
+# number. The block's own prose uses no em-dashes and no semicolons;
+# section titles are quoted verbatim from the receipt and may contain
+# either character as data.
+
+def _rev_num(key):
+    import re
+    m = re.match(r"rev(\d+)", key)
+    return int(m.group(1)) if m else 0
+
+def _rev_split(section):
+    """(lines from revision 1, {later revision number: lines}) for one section."""
+    first = 0
+    later = {}
+    for key, n in (section.get("introduced_by_revision") or {}).items():
+        num = _rev_num(key)
+        if num == 1:
+            first += n
+        elif num > 1:
+            later[num] = later.get(num, 0) + n
+    return first, later
+
+def _plural(n, singular, plural=None):
+    return singular if n == 1 else (plural or singular + "s")
+
+def _later_detail(later):
+    """'1 line added in revision 2' or '5 lines added in revisions 2 and 3'."""
+    total = sum(later.values())
+    nums = sorted(later)
+    if len(nums) == 1:
+        where = f"revision {nums[0]}"
+    elif len(nums) == 2:
+        where = f"revisions {nums[0]} and {nums[1]}"
+    else:
+        where = "revisions " + ", ".join(str(n) for n in nums[:-1]) + f" and {nums[-1]}"
+    return f"{total} {_plural(total, 'line')} added in {where}"
+
+def disclosure_md(r):
+    if r.get("kind") != "document":
+        raise ValueError("--disclosure takes a document receipt, "
+                         f"not a {r.get('kind', 'unknown')} receipt")
+    mark = r.get("mark") or {}
+    category = mark.get("category", "Unmarked")
+    revs = r.get("revision_count", r.get("revisions", 0))
+    floor = r["overall_pct_unchanged_from_first_version"]
+    sentence = r.get("unchanged_sentence_share_pct")
+    sections = r.get("per_section") or []
+
+    unchanged, arrived, multi = [], [], []
+    for s in sections:
+        first, later = _rev_split(s)
+        if s.get("pct_unchanged_from_first_version") == 100.0:
+            unchanged.append(s)
+        if first == 0:
+            arrived.append(s)
+        if first > 0 and later:
+            multi.append((s, later))
+
+    lines = []
+    lines.append("## Steering disclosure")
+    lines.append("")
+    lines.append("This document was written with an AI agent, and its revision history carries "
+                 "a steering receipt. The receipt reports what observably happened across "
+                 "revisions: how much of the final text survives verbatim from the first "
+                 "version, which sections arrived later, and which sections were reshaped "
+                 "after they first appeared.")
+    lines.append("")
+    lines.append(f"- Steering mark: {category}, {revs} {_plural(revs, 'revision')}")
+    floor_line = (f"- First version to final: at least {floor:.1f}% of the final text "
+                  f"survives verbatim from the first version")
+    if sentence is not None:
+        floor_line += (f" ({sentence:.1f}% of final sentences, the less "
+                       f"granularity-sensitive measure)")
+    lines.append(floor_line)
+    if unchanged:
+        lines.append("- Sections unchanged since the first version:")
+        for s in unchanged:
+            lines.append(f"  - {s['section']}")
+    if arrived:
+        lines.append("- Sections that arrived in later revisions:")
+        for s in arrived:
+            _, later = _rev_split(s)
+            lines.append(f"  - {s['section']} ({_rev_label(later)})")
+    reshaped_count = mark.get("reshaped_sections")
+    if reshaped_count:
+        if len(multi) == reshaped_count:
+            lines.append("- Sections reshaped after first appearing:")
+            for s, later in multi:
+                lines.append(f"  - {s['section']} ({_later_detail(later)})")
+        else:
+            lines.append(f"- Sections reshaped after first appearing: {reshaped_count} of "
+                         f"{len(sections)} {_plural(len(sections), 'section')}.")
+            lines.append(f"Note: {len(multi)} {_plural(len(multi), 'section')} gained lines in "
+                         f"later revisions, but the mark counts {reshaped_count} as reshaped. "
+                         f"The mark's rule requires the section heading to survive unchanged, "
+                         f"so a section whose heading changed between versions is not counted "
+                         f"as reshaped even when it gained lines.")
+    history_complete = r.get("history_complete", True)
+    provider = r.get("provider")
+    if history_complete:
+        hist = f"complete, {revs} {_plural(revs, 'revision')}"
+        if provider:
+            hist += f" from {provider}"
+        lines.append(f"- History: {hist}")
+    else:
+        lines.append(f"- History: truncated at the first available revision, {revs} "
+                     f"{_plural(revs, 'revision')} observed. Anything before that baseline "
+                     f"is unmeasured, and the shares above are relative to that baseline.")
+    lines.append("- Full section map: see the STEERING.md that travels with this receipt.")
+    lines.append("")
+    lines.append("Generated from the document receipt with "
+                 "`steerprint <receipt.json> --disclosure`. The receipt carries counts and "
+                 "categories only, never prompt text, and the revisions never leave your "
+                 "machine. Descriptive evidence, never a certified grade. Material rejected "
+                 "or dismissed before it ever entered a revision is invisible to this "
+                 "receipt, so what it shows is a lower bound on interaction.")
+    lines.append("")
+    lines.append("Delete this section if no agent was involved.")
+    return "\n".join(lines) + "\n"
+
+def _rev_label(later):
+    """'revision 2' or 'revisions 2 and 3', for an arrived section's introducer."""
+    nums = sorted(later)
+    if len(nums) == 1:
+        return f"revision {nums[0]}"
+    if len(nums) == 2:
+        return f"revisions {nums[0]} and {nums[1]}"
+    return "revisions " + ", ".join(str(n) for n in nums[:-1]) + f" and {nums[-1]}"
+
 def badge_svg(r):
     mark = r.get("mark") or {}
     word = mark.get("category", "Unmarked")
@@ -316,7 +456,19 @@ def main(argv=None):
         args = [a for a in args if a != str(out_path)]
     receipts = [json.loads(Path(a).read_text(encoding="utf-8")) for a in args]
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    if "--badge" in argv:
+    if "--disclosure" in argv:
+        if len(receipts) != 1:
+            sys.exit("--disclosure takes exactly one receipt")
+        if "-o" not in argv:
+            out_path = Path("disclosure.md")
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            text = disclosure_md(receipts[0])
+        except ValueError as e:
+            sys.exit(str(e))
+        out_path.write_text(text, encoding="utf-8")
+        print(f"wrote disclosure {out_path} ({out_path.stat().st_size:,} bytes)")
+    elif "--badge" in argv:
         if len(receipts) != 1:
             sys.exit("--badge takes exactly one receipt")
         out_path.write_text(badge_svg(receipts[0]), encoding="utf-8")
