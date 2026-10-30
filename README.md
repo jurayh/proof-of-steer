@@ -106,6 +106,14 @@ Doc mode walks the document's revision history and maps, per section, what survi
 
 The sample (`doc-steered-findings-draft`) covers 3 revisions of a research findings draft and 242 nonblank lines in its final version: **at least 36.0%** of the final text survives verbatim from the first version. The per-section map is where the story is: the phase one sections are 100% first draft, the cost estimate section first appears in revision 2, and every phase two section arrives in revision 3.
 
+For a reader who will never run the CLI, render the receipt as a short disclosure block for the top of the document:
+
+```bash
+python3 steering_viz.py my-doc.receipt.json --disclosure -o disclosure.md
+```
+
+The block groups sections (unchanged, arrived later, reshaped) and is generated from the receipt, so its numbers cannot drift from it. See `examples/document-disclosure.md` for the template and a filled sample.
+
 ### Capture mode: steering records at commit time
 
 Everything above is reconstructed after the fact, by replaying a transcript and joining line provenance against git blame. Capture runs the other way: at commit time it writes a steering record as the commit's git note under `refs/notes/steer`, stating which segments of the session landed in that commit, what each segment measurably did (its impact class, its decision outcomes as classes only, the diff hunks it produced), and a hash of the transcript bytes those claims came from. Later receipts then separate **captured** segments from **inferred** ones and print the split on every receipt.
