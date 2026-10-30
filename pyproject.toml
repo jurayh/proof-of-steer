@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "proof-of-steer"
-version = "0.1.4"
+version = "0.1.5"
 description = "Local tool that turns an AI coding session or a document's git history into a steering receipt and a steerprint, a map of which parts the human shaped, so a reviewer can price their attention. Steered, not slop."
 readme = "README.md"
 license = "MIT"
