@@ -1,0 +1,22 @@
+{
+ "iceberg": {
+  "files_at_head": 28,
+  "final_nonblank_lines": 3102,
+  "listed_files": 15,
+  "diff_files": 28
+ },
+ "demo": {
+  "files_at_head": 2,
+  "listed_files": 2,
+  "complete_list": true,
+  "final_nonblank_lines": 28
+ },
+ "missing_line": {
+  "file": "IceBerg/style.css",
+  "removed_added_lines": 1
+ },
+ "captured": {
+  "captured_segments": 7,
+  "commits_with_records": 1
+ }
+}
