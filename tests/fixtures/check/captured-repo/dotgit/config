@@ -1,0 +1,14 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[user]
+	email = t@t
+	name = t
+[remote "origin"]
+	fetch = +refs/notes/steer:refs/notes/steer
+	push = refs/heads/*:refs/heads/*
+	push = refs/notes/steer:refs/notes/steer
+[notes]
+	rewriteRef = refs/notes/steer
