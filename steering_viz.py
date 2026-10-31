@@ -10,6 +10,7 @@ Usage:
   python3 steering_viz.py receipt.json [more.json ...] -o out.html
   python3 steering_viz.py doc.receipt.json --disclosure -o disclosure.md
   python3 steering_viz.py --shadow steered.jsonl control.jsonl [--doc doc.receipt.json] -o shadow.html
+  python3 steering_viz.py --replay session.jsonl [--receipt receipt.json] -o replay.html
 
 Visual model:
   - Code receipts render as a steering timeline (one block per human-turn
@@ -25,6 +26,7 @@ Visual model:
 No prompt text exists in receipts and none is rendered.
 """
 import html, json, sys
+from collections import Counter
 from pathlib import Path
 
 CSS = """
@@ -653,8 +655,317 @@ def shadow_main(argv):
     out_path.write_text(shadow_html(steered, control, doc), encoding="utf-8")
     print(f"wrote shadow {out_path} ({out_path.stat().st_size:,} bytes)")
 
+REPLAY_CLASS_ORDER = ["preexisting", "continuation", "reshaping",
+                      "procedural", "unmeasured"]
+REPLAY_COLOURS = dict(IMPACT_COLOURS)
+REPLAY_COLOURS["preexisting"] = "#46689e"
+
+REPLAY_CAPTION = (
+    "Each row is one file. The strip grows as lines arrive. Color shows "
+    "the kind of turn that introduced each line. Teal lines came from "
+    "continuation turns. Orange lines came from reshaping turns that "
+    "rewrote earlier work. Pale gray lines came from procedural turns. "
+    "White lines with a gray edge came from turns the replay could not "
+    "measure. A gray tail shows lines removed or replaced in the last "
+    "two turns. It fades as the replay moves on. The last frame matches "
+    "the receipt exactly.")
+
+REPLAY_METHOD = (
+    "Frames come from the tool's own replay. Frame zero shows the "
+    "artifact before the first human turn. Each later frame shows the "
+    "artifact after one more human turn. Counts cover non-blank lines "
+    "only, matching the receipt.")
+
+
+def _replay_file_state(files, fp, impact_per):
+    """One file's state in one frame: non-blank lines present, their
+    composition by the impact class of the introducing turn, and the
+    multiset of (line, origin) pairs the discard count is computed from.
+    Origins the impact map does not cover read as unmeasured."""
+    import steering_receipt as sr
+    lines = files.get(fp, [])
+    comp = Counter()
+    pairs = Counter()
+    for ln, org in lines:
+        if not ln.strip():
+            continue
+        if org == sr.PREEXISTING:
+            comp["preexisting"] += 1
+        else:
+            comp[(impact_per.get(org) or {}).get("impact_class",
+                                                "unmeasured")] += 1
+        pairs[(ln, org)] += 1
+    present = sum(comp.values())
+    return present, dict(comp), pairs
+
+
+def replay_frames(session_path):
+    """Frame data for the artifact replay. Frames are the shipped tool's
+    own prefix replays, the same snapshots code_receipt builds for the
+    reconstructed repo: frame 0 is the state before the first human
+    turn, frame k is the state after human turn k. No new provenance
+    logic is introduced here. Returns (frames, meta)."""
+    import steering_receipt as sr
+    fmt = sr.detect_format(session_path)
+    if fmt == "codex":
+        segments, meta = sr.parse_codex_session(session_path)
+    else:
+        segments, meta = sr.parse_session(session_path)
+    track = {}
+    sr.apply_ops(segments, None, track=track)
+    _, impact_per = sr.classify_impact(segments, track)
+    first_human = next((i for i, s in enumerate(segments)
+                        if not s.get("pre_prompt")), len(segments))
+    cuts = [first_human]
+    cuts += [i + 1 for i, s in enumerate(segments)
+             if not s.get("pre_prompt")]
+    human = [s for s in segments if not s.get("pre_prompt")]
+    # First pass: per-frame file states, so row order can follow the
+    # final frame (largest file first, files gone by the end last).
+    states = []
+    for cut in cuts:
+        files, _, introduced, _ = sr.apply_ops(segments[:cut], None)
+        states.append((files, introduced))
+    final_files, _ = states[-1]
+    final_present = {}
+    for fp in set().union(*[set(f) for f, _ in states]):
+        final_present[fp] = _replay_file_state(final_files, fp,
+                                               impact_per)[0]
+    order = sorted(final_present, key=lambda fp: (-final_present[fp], fp))
+    frames = []
+    prev_pairs = {}
+    prev_discards = {}
+    for k, (files, introduced) in enumerate(states):
+        rows = []
+        for fp in order:
+            present, comp, pairs = _replay_file_state(files, fp,
+                                                      impact_per)
+            old = prev_pairs.get(fp, Counter())
+            dnow = sum(max(0, old[p] - pairs[p]) for p in old)
+            rows.append({"file": fp, "present": present, "comp": comp,
+                         "dnow": dnow, "dprev": prev_discards.get(fp, 0)})
+            prev_pairs[fp] = pairs
+            prev_discards[fp] = dnow
+        if k == 0:
+            seg_idx, cls, ops, intr, over = None, None, 0, 0, 0
+        else:
+            s = human[k - 1]
+            seg_idx = s["idx"]
+            t = track.get(seg_idx) or Counter()
+            cls = (impact_per.get(seg_idx) or {}).get("impact_class")
+            ops = t["ops_applied"]
+            intr = introduced.get(seg_idx, 0)
+            over = (t["overlap_earlier_lines"]
+                    + t["overlap_delete_lines"])
+        frames.append({"turn": k, "segment": seg_idx, "impact": cls,
+                       "ops": ops, "introduced": intr, "overlap": over,
+                       "lines": sum(r["present"] for r in rows),
+                       "files": len(files), "rows": rows})
+    scale = max([final_present[fp] for fp in order] or [1])
+    meta = {"turns": len(human),
+            "final_lines": frames[-1]["lines"] if frames else 0,
+            "final_files": frames[-1]["files"] if frames else 0,
+            "scale_max": scale}
+    return frames, meta
+
+
+def replay_html(frames, meta):
+    """Build the artifact replay page. All frame data is embedded as
+    JSON; the page has no external assets and plays nothing on load."""
+    title = meta.get("title", "Artifact replay")
+    subtitle = meta.get("subtitle", "")
+    data = json.dumps({"frames": frames, "scale": meta["scale_max"],
+                       "colours": REPLAY_COLOURS,
+                       "order": REPLAY_CLASS_ORDER})
+    data = data.replace("<", "\\u003c")
+    return f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{esc(title)}</title>
+<style>
+body{{font-family:system-ui,-apple-system,sans-serif;color:#17222e;background:#f6f8fa;margin:0;padding:24px}}
+main{{max-width:900px;margin:0 auto;background:#fff;border:1px solid #dde4ea;border-radius:8px;padding:24px}}
+h1{{font-size:22px;margin:0 0 4px}} .sub{{color:#5c6b7a;margin:0 0 16px}}
+.counters{{display:flex;gap:24px;font-size:15px;margin:12px 0}}
+.counters b{{font-size:20px}}
+.controls{{display:flex;gap:12px;align-items:center;margin:12px 0 20px;flex-wrap:wrap}}
+.controls button{{font-size:15px;padding:6px 16px;cursor:pointer}}
+.controls input[type=range]{{flex:1;min-width:200px}}
+.event{{color:#5c6b7a;min-height:20px;margin:0 0 16px}}
+.rp-row{{display:flex;align-items:center;gap:10px;margin:5px 0}}
+.rp-name{{width:220px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}}
+.rp-name.pending{{opacity:.45}}
+.rp-track{{flex:1;height:14px;background:#e8edf2;border-radius:3px;overflow:hidden;display:flex}}
+.rp-seg{{height:100%}} .rp-seg.unmeasured{{border-right:1px solid #9aa7b4;box-sizing:border-box}}
+.rp-ghost-now{{height:100%;background:#8a97a5;opacity:.85}}
+.rp-ghost-prev{{height:100%;background:#8a97a5;opacity:.3}}
+.rp-num{{width:110px;flex:none;font-size:12px;color:#5c6b7a;text-align:right}}
+.caption,.method{{font-size:14px;line-height:1.5;color:#37424e}}
+.method{{color:#5c6b7a}}
+</style></head><body><main>
+<h1>{esc(title)}</h1>
+<p class="sub">{esc(subtitle)}</p>
+<div class="counters">
+<div><b id="c-turn">0</b><br>turn</div>
+<div><b id="c-lines">0</b><br>lines present</div>
+<div><b id="c-files">0</b><br>files present</div>
+</div>
+<div class="controls">
+<button id="play" type="button">Play</button>
+<input id="scrub" type="range" min="0" max="{len(frames) - 1}" value="0" step="1" aria-label="Scrub through turns">
+<label>Speed <select id="speed" aria-label="Playback speed">
+<option value="0.5">0.5x</option><option value="1" selected>1x</option>
+<option value="2">2x</option><option value="4">4x</option></select></label>
+<span id="frame-label">Frame 0</span>
+</div>
+<p class="event" id="event"></p>
+<div id="rows"></div>
+<p class="caption">{esc(REPLAY_CAPTION)}</p>
+<p class="method">{esc(REPLAY_METHOD)}</p>
+</main>
+<script id="replay-data" type="application/json">{data}</script>
+<script>
+const D = JSON.parse(document.getElementById('replay-data').textContent);
+const ORDER = D.order, COL = D.colours, SCALE = D.scale;
+const rowsEl = document.getElementById('rows');
+const rowEls = {{}};
+D.frames[0].rows.forEach(r => {{
+  const div = document.createElement('div');
+  div.className = 'rp-row';
+  div.innerHTML = '<div class="rp-name pending"></div><div class="rp-track"></div><div class="rp-num"></div>';
+  div.querySelector('.rp-name').textContent = r.file;
+  div.querySelector('.rp-name').title = r.file;
+  rowsEl.appendChild(div);
+  rowEls[r.file] = div;
+}});
+let cur = 0, timer = null;
+function fmt(n) {{ return n.toLocaleString('en-US'); }}
+function eventText(f) {{
+  if (f.turn === 0) return 'Before the first prompt. The artifact is empty.';
+  let s = 'Turn ' + f.turn + ': ' + (f.impact || 'unknown');
+  s += ', ' + f.ops + (f.ops === 1 ? ' op' : ' ops');
+  s += ', ' + fmt(f.introduced) + ' lines introduced';
+  if (f.overlap) s += ', ' + fmt(f.overlap) + ' earlier lines rewritten';
+  return s + '.';
+}}
+function render(k) {{
+  cur = k;
+  const f = D.frames[k];
+  document.getElementById('c-turn').textContent = f.turn;
+  document.getElementById('c-lines').textContent = fmt(f.lines);
+  document.getElementById('c-files').textContent = fmt(f.files);
+  document.getElementById('frame-label').textContent = 'Frame ' + k + ' of ' + (D.frames.length - 1);
+  document.getElementById('event').textContent = eventText(f);
+  document.getElementById('scrub').value = k;
+  f.rows.forEach(r => {{
+    const el = rowEls[r.file];
+    if (r.present > 0) {{ el.querySelector('.rp-name').classList.remove('pending'); }}
+    const track = el.querySelector('.rp-track');
+    track.innerHTML = '';
+    ORDER.forEach(cls => {{
+      const n = r.comp[cls] || 0;
+      if (!n) return;
+      const d = document.createElement('div');
+      d.className = 'rp-seg' + (cls === 'unmeasured' ? ' unmeasured' : '');
+      d.style.width = (100 * n / SCALE) + '%';
+      d.style.background = COL[cls];
+      track.appendChild(d);
+    }});
+    if (r.dnow) {{
+      const d = document.createElement('div');
+      d.className = 'rp-ghost-now';
+      d.style.width = (100 * r.dnow / SCALE) + '%';
+      track.appendChild(d);
+    }}
+    if (r.dprev) {{
+      const d = document.createElement('div');
+      d.className = 'rp-ghost-prev';
+      d.style.width = (100 * r.dprev / SCALE) + '%';
+      track.appendChild(d);
+    }}
+    el.querySelector('.rp-num').textContent = fmt(r.present) + ' lines';
+  }});
+}}
+function stop() {{ if (timer) {{ clearInterval(timer); timer = null; }} document.getElementById('play').textContent = 'Play'; }}
+function startTimer() {{
+  const speed = parseFloat(document.getElementById('speed').value);
+  timer = setInterval(() => {{
+    if (cur >= D.frames.length - 1) {{ stop(); return; }}
+    render(cur + 1);
+  }}, 900 / speed);
+}}
+document.getElementById('play').addEventListener('click', () => {{
+  if (timer) {{ stop(); return; }}
+  if (cur >= D.frames.length - 1) render(0);
+  document.getElementById('play').textContent = 'Pause';
+  startTimer();
+}});
+document.getElementById('speed').addEventListener('change', () => {{
+  if (!timer) return;
+  clearInterval(timer);
+  startTimer();
+}});
+document.getElementById('scrub').addEventListener('input', e => render(parseInt(e.target.value, 10)));
+render(0);
+</script>
+</body></html>"""
+
+
+def replay_main(argv):
+    """CLI: steerprint --replay session.jsonl [--receipt receipt.json]
+    -o replay.html. Frames come from the shipped replay; the receipt,
+    when given, supplies only the header label, mark, and post-first
+    share, never frame data."""
+    args = list(argv)
+    out_path = Path("artifact-replay.html")
+    if "-o" in args:
+        out_path = Path(args[args.index("-o") + 1])
+    receipt_path = None
+    if "--receipt" in args:
+        receipt_path = args[args.index("--receipt") + 1]
+    pos = []
+    skip_next = False
+    for a in args:
+        if skip_next:
+            skip_next = False
+            continue
+        if a in ("-o", "--receipt"):
+            skip_next = True
+            continue
+        if a.startswith("-"):
+            continue
+        pos.append(a)
+    if len(pos) != 1:
+        sys.exit("--replay takes exactly one session")
+    frames, meta = replay_frames(Path(pos[0]))
+    title = "Artifact replay"
+    subtitle = (f"{meta['turns']} human turns. "
+                f"{meta['final_lines']:,} lines in {meta['final_files']} files.")
+    if receipt_path:
+        r = json.loads(Path(receipt_path).read_text(encoding="utf-8"))
+        title = f"Artifact replay: {r.get('label', 'session')}"
+        mark = (r.get("mark") or {}).get("category")
+        pct = headline_pct(r.get("git_join") or {})
+        extra = []
+        if mark:
+            extra.append(f"mark {mark}")
+        if pct is not None:
+            extra.append(f"{pct}% of lines arrived after the first prompt")
+        if extra:
+            subtitle += " " + ", ".join(extra) + "."
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(replay_html(frames, {**meta, "title": title,
+                                             "subtitle": subtitle}),
+                        encoding="utf-8")
+    print(f"wrote replay {out_path} ({out_path.stat().st_size:,} bytes, "
+          f"{len(frames)} frames)")
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if "--replay" in argv:
+        replay_main(argv)
+        return
     if "--shadow" in argv:
         shadow_main(argv)
         return
