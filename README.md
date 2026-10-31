@@ -16,7 +16,7 @@ The wedge is influence, not authorship. Tools that label lines as human-typed or
 
 ### Ask for the receipt in your template
 
-The habit forms where the pull request starts. [examples/pull-request-template.md](examples/pull-request-template.md) is a short section to paste into your project's pull request template: contributors who used an agent fill in their steering mark and attach the receipt, and everyone else deletes the section. This repo's own template carries the same section.
+The habit forms where the pull request starts. [examples/pull-request-template.md](examples/pull-request-template.md) is a short section to paste into your project's pull request template: contributors who used an agent fill in their steering mark and attach the receipt, and everyone else deletes the section. This repo's own template carries the same section. Maintainers can verify the artifact-side claims of an attached receipt against the PR diff with `proof-of-steer check <receipt.json> <diff>`. It never sees the transcript. The steering mark and turn counts print as not checkable from a diff, because a diff carries no segment provenance.
 
 ## For creators
 
