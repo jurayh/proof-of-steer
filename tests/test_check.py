@@ -9,6 +9,7 @@ recorded in manifest.json with its expected effect.
 
 import io
 import json
+import shutil
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -16,6 +17,15 @@ from pathlib import Path
 import check as check_mod
 
 FIX = Path(__file__).resolve().parent / "fixtures" / "check"
+
+# GitHub refuses any path component named `.git`, so the captured-repo
+# fixture ships its git directory as `dotgit` and tests materialize it as
+# `.git` on first use. A checkout that already has `.git` (a local run)
+# is left untouched.
+_dotgit = FIX / "captured-repo" / "dotgit"
+_git = FIX / "captured-repo" / ".git"
+if _dotgit.is_dir() and not _git.exists():
+    shutil.copytree(_dotgit, _git)
 
 
 def load(name):
