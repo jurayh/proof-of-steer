@@ -1826,6 +1826,11 @@ def main(argv=None):
     pn.add_argument("repo", help="the repository carrying steering records under refs/notes/steer")
     pn.add_argument("--label", default=None, help="receipt label (default: <repo name>-notes)")
     pn.add_argument("--out", default="receipts-out", help="output directory (default: receipts-out)")
+    pcheck = sub.add_parser("check", help="maintainer-side check: verify a receipt's artifact-side claims against a PR diff, without ever seeing the transcript")
+    pcheck.add_argument("receipt", help="receipt JSON file")
+    pcheck.add_argument("diff", help="unified diff file (git diff output or a downloaded PR diff)")
+    pcheck.add_argument("--repo", default=None, help="repo carrying steering records: enables commit-tier capture verification only, never a transcript tier")
+    pcheck.add_argument("--json-out", default=None, help="write the machine-readable check report to this path")
     args = ap.parse_args(argv)
     if args.cmd == "code" and args.repo_ref and not args.repo:
         ap.error("--repo-ref requires --repo")
@@ -1869,6 +1874,10 @@ def main(argv=None):
                           "segments_recorded": r["capture"]["segments_recorded"],
                           "verification_tier": r["capture"]["verification_tier"]}, indent=1))
         return 0
+    if args.cmd == "check":
+        from check import run_check
+        return run_check(args.receipt, args.diff, repo=args.repo,
+                         json_out=args.json_out)
 
     out_dir = Path(args.out); out_dir.mkdir(parents=True, exist_ok=True)
     if args.cmd == "code":
