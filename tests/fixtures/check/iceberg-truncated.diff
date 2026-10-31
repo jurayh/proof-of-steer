@@ -1,0 +1,2143 @@
+diff --git a/IceBerg/.gitignore b/IceBerg/.gitignore
+new file mode 100644
+index 0000000..f99f737
+--- /dev/null
++++ b/IceBerg/.gitignore
+@@ -0,0 +1,4 @@
++node_modules/
++dist/
++.DS_Store
++*.local
+diff --git a/IceBerg/README.MD b/IceBerg/README.MD
+new file mode 100644
+index 0000000..5052158
+--- /dev/null
++++ b/IceBerg/README.MD
+@@ -0,0 +1,100 @@
++# Uriel — Auriel Solaris
++
++Character portfolio site for **Uriel**, a Throne-class angel and the central figure of Auriel Solaris's two-timeline book series. Built as a single-page application with full client-side routing.
++
++---
++
++## Tech stack
++
++| Tool | Version | Role |
++|------|---------|------|
++| [SolidJS](https://solidjs.com) | ^1.9.5 | UI framework |
++| [@solidjs/router](https://github.com/solidjs/solid-router) | ^0.16.1 | Client-side routing |
++| [Vite](https://vitejs.dev) | ^6.3.5 | Build tool & dev server |
++| [vite-plugin-solid](https://github.com/solidjs/vite-plugin-solid) | ^2.11.6 | SolidJS Vite integration |
++| TypeScript | via Vite | Type checking |
++
++**Fonts** (Google Fonts): Playfair Display · Cormorant Garamond · Inter
++
++---
++
++## Project structure
++
++```
++IceBerg/
++├── index.html              # Entry point — loads Google Fonts, mounts root
++├── vite.config.ts          # Vite + SolidJS plugin config
++├── tsconfig.json
++├── package.json
++│
++├── src/
++│   ├── index.tsx           # Router setup — all 6 routes defined here
++│   ├── index.css           # Shared design tokens + page-header/footer classes
++│   ├── vite-env.d.ts       # Vite client type reference (allows CSS imports)
++│   │
++│   ├── App.tsx             # Home page — three-column locked viewport layout
++│   ├── home.css
++│   │
++│   └── pages/
++│       ├── Timelines.tsx   # Two-timeline beat-by-beat comparison
++│       ├── timelines.css
++│       ├── Connections.tsx # Character web with filter + detail panel
++│       ├── connections.css
++│       ├── Books.tsx       # Published and forthcoming works
++│       ├── books.css
++│       ├── Worldbuilding.tsx  # Lore encyclopedia with sidebar nav
++│       ├── worldbuilding.css
++│       ├── Audience.tsx    # Contact / reach the author
++│       └── audience.css
++│
++├── DESIGN.MD               # Full design guide — typography, CSS conventions, Apple style rules
++├── CLAUDE.MD               # Claude Code project instructions
++└── apple-style-guide.pdf   # Source reference — Apple Style Guide June 2025
++```
++
++---
++
++## Pages
++
++| Route | Page | Description |
++|-------|------|-------------|
++| `/` | Home | Hero layout — Uriel's name, epithet, attributes, nav |
++| `/timelines` | Timelines | Timeline A vs B beat cards with expandable detail |
++| `/connections` | Connections | Filterable character cards with relationship panel |
++| `/books` | Books | Four volumes across two timelines |
++| `/worldbuilding` | Worldbuilding | Lore entries — dimensions, angels, hell, wings |
++| `/audience` | Audience | Contact links for Auriel Solaris |
++
++---
++
++## Getting started
++
++```bash
++npm install
++npm run dev
++```
++
++Then open `http://localhost:5173`.
++
++```bash
++npm run build    # Output to dist/
++npm run preview  # Preview the production build locally
++```
++
++---
++
++## Design
++
++The site follows a warm amber/gold palette (`#fffbf0` → `#78350f`) with a three-font system:
++
++- **Playfair Display** — hero name only (weight 600 italic)
++- **Cormorant Garamond** — all headings, titles, quotes, descriptions (weight 300–400)
++- **Inter** — body text, labels, nav, UI elements (weight 400–600)
++
++All CSS is split per page to prevent bloat. Shared tokens and layout classes live in `src/index.css`. Full conventions are documented in `DESIGN.MD`.
++
++---
++
++## Author
++
++**Auriel Solaris** · [Instagram](https://www.instagram.com/auriel.solaris) · [REDACTED_EMAIL]
+diff --git a/IceBerg/app/routes/home.tsx b/IceBerg/app/routes/home.tsx
+new file mode 100644
+index 0000000..62070aa
+--- /dev/null
++++ b/IceBerg/app/routes/home.tsx
+@@ -0,0 +1,199 @@
++import type { Route } from './+types/home'
++import { useSubmit, Form } from 'react-router'
++import { useState } from 'react'
++
++export function meta({}: Route.MetaArgs) {
++  return [
++    { title: 'IceBerg' },
++    { name: 'description', content: 'What lies beneath. Surface the depth in your data, your work, and your thinking.' },
++  ]
++}
++
++export default function Home() {
++  const [sent, setSent] = useState(false)
++
++  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
++    event.preventDefault()
++    setSent(true)
++    setTimeout(() => setSent(false), 2500)
++    ;(event.currentTarget as HTMLFormElement).reset()
++  }
++
++  return (
++    <div className="min-h-screen bg-[#f5f7fa] text-[#1a1a2e] font-sans">
++      {/* Navigation */}
++      <header className="sticky top-0 z-50 bg-[#f5f7fa]/90 backdrop-blur-md border-b border-[#a8d4f5]/30">
++        <nav className="max-w-5xl mx-auto flex items-center justify-between px-6 py-4">
++          <a href="#" className="text-xl font-bold text-[#0d1f3c] tracking-tight">
++            IceBerg
++          </a>
++          <ul className="hidden sm:flex gap-8 list-none">
++            <li><a href="#features" className="text-[#5a6a7e] hover:text-[#1e6fa8] transition-colors text-sm">Features</a></li>
++            <li><a href="#about" className="text-[#5a6a7e] hover:text-[#1e6fa8] transition-colors text-sm">About</a></li>
++            <li><a href="#contact" className="text-[#5a6a7e] hover:text-[#1e6fa8] transition-colors text-sm">Contact</a></li>
++          </ul>
++        </nav>
++      </header>
++
++      <main>
++        {/* Hero */}
++        <section className="max-w-5xl mx-auto flex flex-col-reverse md:flex-row items-center justify-between gap-12 px-6 py-24 md:min-h-[80vh]">
++          <div className="flex-1 max-w-lg text-center md:text-left">
++            <h1 className="text-5xl md:text-7xl font-extrabold leading-tight tracking-tighter text-[#0d1f3c] mb-5">
++              What lies beneath
++            </h1>
++            <p className="text-lg text-[#5a6a7e] mb-8 max-w-md mx-auto md:mx-0">
++              Most of what matters is invisible at first glance. IceBerg helps you surface the depth
++              in your data, your work, and your thinking.
++            </p>
++            <div className="flex flex-wrap gap-4 justify-center md:justify-start">
++              <a
++                href="#features"
++                className="inline-block px-7 py-3 bg-[#1e6fa8] text-white font-semibold rounded-md shadow-md hover:bg-[#155a8a] hover:-translate-y-px active:translate-y-0 transition-all"
++              >
++                Get started
++              </a>
++              <a
++                href="#about"
++                className="inline-block px-7 py-3 border-2 border-[#1e6fa8] text-[#1e6fa8] font-semibold rounded-md hover:bg-[#1e6fa8] hover:text-white transition-all"
++              >
++                Learn more
++              </a>
++            </div>
++          </div>
++
++          {/* Iceberg visual */}
++          <div className="flex-1 flex justify-center items-center" aria-hidden="true">
++            <div className="flex flex-col items-center w-48">
++              <div
++                className="w-0 h-0"
++                style={{
++                  borderLeft: '48px solid transparent',
++                  borderRight: '48px solid transparent',
++                  borderBottom: '72px solid #a8d4f5',
++                  filter: 'drop-shadow(0 -4px 12px rgba(168,212,245,0.5))',
++                }}
++              />
++              <div className="w-40 h-[3px] bg-gradient-to-r from-transparent via-[#2a6496] to-transparent" />
++              <div
++                className="w-0 h-0 opacity-30 blur-[1px]"
++                style={{
++                  borderLeft: '88px solid transparent',
++                  borderRight: '88px solid transparent',
++                  borderTop: '144px solid #1e6fa8',
++                }}
++              />
++            </div>
++          </div>
++        </section>
++
++        {/* Features */}
++        <section id="features" className="max-w-5xl mx-auto px-6 py-20">
++          <h2 className="text-3xl md:text-4xl font-bold text-center text-[#0d1f3c] tracking-tight mb-14">
++            What IceBerg does
++          </h2>
++          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
++            {[
++              {
++                icon: '◈',
++                title: 'Deep analysis',
++                body: 'Go beyond surface-level metrics. Understand the full picture behind every data point.',
++              },
++              {
++                icon: '◎',
++                title: 'Clear structure',
++                body: 'Organize complex information into clean, navigable layers — from overview to detail.',
++              },
++              {
++                icon: '◆',
++                title: 'Full-screen focus',
++                body: 'A distraction-free workspace that lets you concentrate on what actually matters.',
++              },
++            ].map(({ icon, title, body }) => (
++              <article
++                key={title}
++                className="bg-white rounded-xl p-7 shadow-sm border border-[#a8d4f5]/20 hover:-translate-y-1 hover:shadow-md transition-all"
++              >
++                <div className="text-3xl text-[#1e6fa8] mb-4" aria-hidden="true">{icon}</div>
++                <h3 className="text-lg font-bold text-[#0d1f3c] mb-2">{title}</h3>
++                <p className="text-[#5a6a7e] leading-relaxed">{body}</p>
++              </article>
++            ))}
++          </div>
++        </section>
++
++        {/* About */}
++        <section id="about" className="bg-gradient-to-br from-[#0d1f3c] to-[#1a3a5c] py-24 px-6">
++          <div className="max-w-2xl mx-auto text-center">
++            <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight mb-8">
++              Built for depth
++            </h2>
++            <p className="text-lg text-white/80 leading-relaxed mb-4">
++              IceBerg is designed for people who know that the most important things are rarely
++              the most obvious. We believe in tools that reward careful attention and repay
++              exploration.
++            </p>
++            <p className="text-xl font-semibold text-[#a8d4f5]">
++              Simple on the surface. Powerful underneath.
++            </p>
++          </div>
++        </section>
++
++        {/* Contact */}
++        <section id="contact" className="max-w-lg mx-auto px-6 py-20">
++          <h2 className="text-3xl md:text-4xl font-bold text-center text-[#0d1f3c] tracking-tight mb-10">
++            Get in touch
++          </h2>
++          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
++            <div className="flex flex-col gap-1">
++              <label htmlFor="user-name" className="text-sm font-semibold text-[#1a1a2e]">Name</label>
++              <input
++                id="user-name"
++                name="name"
++                type="text"
++                placeholder="Your name"
++                autoComplete="name"
++                required
++                className="px-4 py-3 border-[1.5px] border-[#a8d4f5]/60 rounded-md bg-white text-[#1a1a2e] focus:outline-none focus:border-[#1e6fa8] focus:ring-2 focus:ring-[#1e6fa8]/20 transition-all"
++              />
++            </div>
++            <div className="flex flex-col gap-1">
++              <label htmlFor="user-email" className="text-sm font-semibold text-[#1a1a2e]">Email</label>
++              <input
++                id="user-email"
++                name="email"
++                type="email"
++                placeholder="[REDACTED_EMAIL]"
++                autoComplete="email"
++                required
++                className="px-4 py-3 border-[1.5px] border-[#a8d4f5]/60 rounded-md bg-white text-[#1a1a2e] focus:outline-none focus:border-[#1e6fa8] focus:ring-2 focus:ring-[#1e6fa8]/20 transition-all"
++              />
++            </div>
++            <div className="flex flex-col gap-1">
++              <label htmlFor="user-message" className="text-sm font-semibold text-[#1a1a2e]">Message</label>
++              <textarea
++                id="user-message"
++                name="message"
++                rows={4}
++                placeholder="What's on your mind?"
++                required
++                className="px-4 py-3 border-[1.5px] border-[#a8d4f5]/60 rounded-md bg-white text-[#1a1a2e] focus:outline-none focus:border-[#1e6fa8] focus:ring-2 focus:ring-[#1e6fa8]/20 transition-all resize-y"
++              />
++            </div>
++            <button
++              type="submit"
++              disabled={sent}
++              className="self-start px-7 py-3 bg-[#1e6fa8] text-white font-semibold rounded-md shadow-md hover:bg-[#155a8a] disabled:opacity-70 transition-all"
++            >
++              {sent ? 'Sent!' : 'Send message'}
++            </button>
++          </form>
++        </section>
++      </main>
++
++      <footer className="text-center py-6 text-sm text-[#5a6a7e] border-t border-[#a8d4f5]/30">
++        &copy; 2026 IceBerg. All rights reserved.
++      </footer>
++    </div>
++  )
++}
+diff --git a/IceBerg/index.html b/IceBerg/index.html
+new file mode 100644
+index 0000000..a7e0a61
+--- /dev/null
++++ b/IceBerg/index.html
+@@ -0,0 +1,18 @@
++<!DOCTYPE html>
++<html lang="en">
++  <head>
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <title>Uriel — Auriel Solaris</title>
++    <link rel="preconnect" href="https://fonts.googleapis.com" />
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link
++      href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap"
++      rel="stylesheet"
++    />
++  </head>
++  <body>
++    <div id="root"></div>
++    <script type="module" src="/src/index.tsx"></script>
++  </body>
++</html>
+diff --git a/IceBerg/main.js b/IceBerg/main.js
+new file mode 100644
+index 0000000..d676136
+--- /dev/null
++++ b/IceBerg/main.js
+@@ -0,0 +1,19 @@
++const contactForm = document.querySelector('.contact-form');
++
++if (contactForm) {
++  contactForm.addEventListener('submit', (event) => {
++    event.preventDefault();
++
++    const submitBtn = contactForm.querySelector('button[type="submit"]');
++    const originalText = submitBtn.textContent;
++
++    submitBtn.textContent = 'Sent!';
++    submitBtn.disabled = true;
++
++    setTimeout(() => {
++      submitBtn.textContent = originalText;
++      submitBtn.disabled = false;
++      contactForm.reset();
++    }, 2500);
++  });
++}
+diff --git a/IceBerg/package.json b/IceBerg/package.json
+new file mode 100644
+index 0000000..c1dea88
+--- /dev/null
++++ b/IceBerg/package.json
+@@ -0,0 +1,18 @@
++{
++  "name": "iceberg",
++  "private": true,
++  "version": "0.1.0",
++  "type": "module",
++  "scripts": {
++    "dev": "vite",
++    "build": "vite build",
++    "preview": "vite preview"
++  },
++  "dependencies": {
++    "solid-js": "^1.9.5"
++  },
++  "devDependencies": {
++    "vite": "^6.3.5",
++    "vite-plugin-solid": "^2.11.6"
++  }
++}
+diff --git a/IceBerg/src/App.tsx b/IceBerg/src/App.tsx
+new file mode 100644
+index 0000000..77a2dd6
+--- /dev/null
++++ b/IceBerg/src/App.tsx
+@@ -0,0 +1,95 @@
++import type { Component } from 'solid-js'
++import { A } from '@solidjs/router'
++import './home.css'
++
++const App: Component = () => {
++  return (
++    <div class="viewport">
++      {/* Left column */}
++      <aside class="left-col">
++        <div class="sigil" aria-hidden="true">
++          <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
++            <circle cx="60" cy="60" r="54" stroke="currentColor" stroke-width="1.2" opacity="0.4"/>
++            <circle cx="60" cy="60" r="36" stroke="currentColor" stroke-width="1" opacity="0.6"/>
++            <line x1="60" y1="6" x2="60" y2="114" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
++            <line x1="6" y1="60" x2="114" y2="60" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
++            <line x1="17" y1="17" x2="103" y2="103" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
++            <line x1="103" y1="17" x2="17" y2="103" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
++            <polygon
++              points="60,18 70,50 104,50 77,68 87,100 60,82 33,100 43,68 16,50 50,50"
++              stroke="currentColor"
++              stroke-width="1.2"
++              fill="none"
++              opacity="0.7"
++            />
++            <circle cx="60" cy="60" r="5" fill="currentColor" opacity="0.9"/>
++          </svg>
++        </div>
++
++        <nav class="side-nav" aria-label="Main navigation">
++          <A href="/" class="nav-item" activeClass="is-active" end>Home</A>
++          <A href="/timelines" class="nav-item" activeClass="is-active">Timelines</A>
++          <A href="/connections" class="nav-item" activeClass="is-active">Connections</A>
++          <A href="/books" class="nav-item" activeClass="is-active">Books</A>
++          <A href="/worldbuilding" class="nav-item" activeClass="is-active">Worldbuilding</A>
++          <A href="/audience" class="nav-item" activeClass="is-active">Audience</A>
++        </nav>
++
++        <p class="side-label">Auriel Solaris</p>
++      </aside>
++
++      {/* Center — hero */}
++      <main class="center-col">
++        <header class="hero-header">
++          <p class="eyebrow">Throne — Virtue of Wisdom &amp; Judgement</p>
++          <h1 class="hero-name">Uriel</h1>
++          <p class="hero-epithet">Bearer of the Flame That Does Not Consume</p>
++        </header>
++
++        <blockquote class="hero-quote">
++          <p>
++            Wisdom is not the absence of shadow —<br />
++            it is knowing which light to carry into the dark.
++          </p>
++        </blockquote>
++
++        <div class="hero-cta-row">
++          <a href="#" class="btn-primary">Enter the Dominion</a>
++          <a href="#" class="btn-ghost">Read the Writings</a>
++        </div>
++      </main>
++
++      {/* Right column */}
++      <aside class="right-col">
++        <div class="attributes">
++          <div class="attr">
++            <span class="attr-label">Power class</span>
++            <span class="attr-value">Throne</span>
++          </div>
++          <div class="attr">
++            <span class="attr-label">Former role</span>
++            <span class="attr-value">Grigori</span>
++          </div>
++          <div class="attr">
++            <span class="attr-label">Virtue</span>
++            <span class="attr-value">Wisdom &amp; Judgement</span>
++          </div>
++          <div class="attr">
++            <span class="attr-label">Realm</span>
++            <span class="attr-value">Eden, Third Heaven</span>
++          </div>
++        </div>
++
++        <div class="scroll-ornament" aria-hidden="true">
++          <span class="ornament-line" />
++          <span class="ornament-glyph">✦</span>
++          <span class="ornament-line" />
++        </div>
++
++        <p class="right-label">Est. before time</p>
++      </aside>
++    </div>
++  )
++}
++
++export default App
+diff --git a/IceBerg/src/audience.css b/IceBerg/src/audience.css
+new file mode 100644
+index 0000000..917beea
+--- /dev/null
++++ b/IceBerg/src/audience.css
+@@ -0,0 +1,107 @@
++.au-page {
++  min-height: 100vh;
++  background: var(--gold-100);
++  background-image:
++    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(251, 191, 36, 0.14) 0%, transparent 60%);
++  font-family: var(--font-body);
++  color: var(--text-primary);
++  display: flex;
++  flex-direction: column;
++}
++
++.au-main {
++  flex: 1;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  padding: 3rem 2rem;
++}
++
++.au-inner {
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  text-align: center;
++  max-width: 480px;
++  gap: 2rem;
++}
++
++/* ── Lore text ──────────────────────────────────────── */
++.au-lore {
++  font-family: var(--font-display);
++  font-style: italic;
++  font-size: 1rem;
++  line-height: 1.8;
++  color: var(--text-secondary);
++}
++
++/* ── Divider ────────────────────────────────────────── */
++.au-divider {
++  display: flex;
++  align-items: center;
++  gap: 0.75rem;
++  width: 100%;
++  color: var(--gold-400);
++  opacity: 0.6;
++}
++
++.au-divider-line {
++  flex: 1;
++  height: 1px;
++  background: currentColor;
++}
++
++.au-divider-glyph { font-size: 0.7rem; }
++
++/* ── Contact items ──────────────────────────────────── */
++.au-contacts {
++  display: flex;
++  flex-direction: column;
++  gap: 1rem;
++  width: 100%;
++}
++
++.au-contact-item {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  padding: 1rem 1.5rem;
++  background: rgba(255, 251, 240, 0.7);
++  border: 1px solid var(--border);
++  border-radius: 8px;
++  text-decoration: none;
++  transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
++}
++
++.au-contact-item:hover {
++  border-color: rgba(245, 158, 11, 0.45);
++  box-shadow: 0 4px 20px rgba(13, 31, 60, 0.07);
++  transform: translateY(-2px);
++}
++
++.au-contact-label {
++  font-size: 0.65rem;
++  font-weight: 700;
++  letter-spacing: 0.14em;
++  text-transform: uppercase;
++  color: var(--text-muted);
++}
++
++.au-contact-value {
++  font-family: var(--font-display);
++  font-style: italic;
++  font-size: 1rem;
++  color: var(--amber-deep);
++}
++
++/* ── Footnote ───────────────────────────────────────── */
++.au-footnote {
++  font-size: 0.75rem;
++  letter-spacing: 0.06em;
++  color: var(--text-muted);
++  opacity: 0.6;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .au-contact-item { transition: none; }
++}
+diff --git a/IceBerg/src/books.css b/IceBerg/src/books.css
+new file mode 100644
+index 0000000..a839877
+--- /dev/null
++++ b/IceBerg/src/books.css
+@@ -0,0 +1,159 @@
++.bk-page {
++  min-height: 100vh;
++  background: var(--gold-100);
++  background-image:
++    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(251, 191, 36, 0.14) 0%, transparent 60%);
++  font-family: var(--font-body);
++  color: var(--text-primary);
++  display: flex;
++  flex-direction: column;
++}
++
++/* ── Main ───────────────────────────────────────────── */
++.bk-main {
++  flex: 1;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  padding: 3rem 2rem;
++}
++
++.bk-grid {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 1.5rem;
++  max-width: 900px;
++  width: 100%;
++}
++
++/* ── Card ───────────────────────────────────────────── */
++.bk-card {
++  background: rgba(255, 251, 240, 0.7);
++  border: 1px solid var(--border);
++  border-radius: 10px;
++  padding: 1.75rem;
++  display: flex;
++  flex-direction: column;
++  gap: 0.6rem;
++  transition: border-color var(--transition), box-shadow var(--transition);
++  position: relative;
++  overflow: hidden;
++}
++
++.bk-card::before {
++  content: '';
++  position: absolute;
++  top: 0;
++  left: 0;
++  right: 0;
++  height: 3px;
++}
++
++.bk-card.timeline-a::before { background: linear-gradient(90deg, #60a5fa, #93c5fd); }
++.bk-card.timeline-b::before { background: linear-gradient(90deg, #34d399, #6ee7b7); }
++
++.bk-card:hover {
++  border-color: rgba(245, 158, 11, 0.4);
++  box-shadow: 0 6px 28px rgba(13, 31, 60, 0.08);
++}
++
++/* ── Card top row ───────────────────────────────────── */
++.bk-card-top {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  margin-bottom: 0.25rem;
++}
++
++.bk-timeline-tag {
++  font-size: 0.62rem;
++  font-weight: 700;
++  letter-spacing: 0.12em;
++  text-transform: uppercase;
++  padding: 0.15rem 0.55rem;
++  border-radius: 3px;
++}
++
++.bk-timeline-tag.timeline-a {
++  background: rgba(96, 165, 250, 0.15);
++  color: #1d4ed8;
++}
++
++.bk-timeline-tag.timeline-b {
++  background: rgba(52, 211, 153, 0.15);
++  color: #065f46;
++}
++
++.bk-status {
++  font-size: 0.62rem;
++  font-weight: 700;
++  letter-spacing: 0.1em;
++  text-transform: uppercase;
++}
++
++.bk-status.is-published { color: var(--gold-500); }
++.bk-status.is-forthcoming { color: var(--text-muted); opacity: 0.6; }
++
++/* ── Card content ───────────────────────────────────── */
++.bk-title {
++  font-family: var(--font-display);
++  font-size: 1.5rem;
++  font-weight: 300;
++  color: var(--amber-deep);
++  line-height: 1.2;
++  letter-spacing: 0.02em;
++}
++
++.bk-subtitle {
++  font-size: 0.7rem;
++  letter-spacing: 0.1em;
++  text-transform: uppercase;
++  color: var(--text-muted);
++  margin-top: -0.2rem;
++}
++
++.bk-description {
++  font-family: var(--font-display);
++  font-style: italic;
++  font-size: 0.875rem;
++  line-height: 1.75;
++  color: var(--text-secondary);
++  margin-top: 0.5rem;
++  flex: 1;
++}
++
++/* ── Links ──────────────────────────────────────────── */
++.bk-links {
++  display: flex;
++  gap: 0.75rem;
++  margin-top: 0.75rem;
++  flex-wrap: wrap;
++}
++
++.bk-link {
++  display: inline-block;
++  padding: 0.45rem 1rem;
++  background: var(--gold-500);
++  color: #fff;
++  border-radius: 4px;
++  font-size: 0.78rem;
++  font-weight: 600;
++  letter-spacing: 0.04em;
++  text-decoration: none;
++  transition: background var(--transition), transform var(--transition);
++}
++
++.bk-link:hover {
++  background: var(--gold-600);
++  transform: translateY(-1px);
++}
++
++/* ── Responsive ─────────────────────────────────────── */
++@media (max-width: 700px) {
++  .bk-grid { grid-template-columns: 1fr; }
++  .bk-main { padding: 2rem 1.5rem; align-items: flex-start; }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .bk-card, .bk-link { transition: none; }
++}
+diff --git a/IceBerg/src/connections.css b/IceBerg/src/connections.css
+new file mode 100644
+index 0000000..762c8c4
+--- /dev/null
++++ b/IceBerg/src/connections.css
+@@ -0,0 +1,290 @@
++.cn-page {
++  min-height: 100vh;
++  background: var(--gold-100);
++  background-image:
++    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(251, 191, 36, 0.14) 0%, transparent 60%);
++  font-family: var(--font-body);
++  color: var(--text-primary);
++  display: flex;
++  flex-direction: column;
++}
++
++.cn-header-right { justify-self: end; }
++
++/* ── Filters ────────────────────────────────────────── */
++.cn-filters {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 0.5rem;
++  padding: 1.25rem 3rem;
++  border-bottom: 1px solid var(--border);
++}
++
++.cn-filter-btn {
++  padding: 0.3rem 0.9rem;
++  background: transparent;
++  border: 1px solid var(--border);
++  border-radius: 100px;
++  font-size: 0.72rem;
++  font-family: var(--font-body);
++  font-weight: 600;
++  letter-spacing: 0.05em;
++  color: var(--text-muted);
++  cursor: pointer;
++  transition: all var(--transition);
++}
++
++.cn-filter-btn:hover {
++  border-color: var(--gold-400);
++  color: var(--gold-600);
++}
++
++.cn-filter-btn.is-active {
++  background: var(--gold-500);
++  border-color: var(--gold-500);
++  color: #fff;
++}
++
++/* ── Body layout ────────────────────────────────────── */
++.cn-body {
++  display: grid;
++  grid-template-columns: 1fr 340px;
++  flex: 1;
++  min-height: 0;
++}
++
++.cn-grid-wrapper {
++  display: flex;
++  justify-content: center;
++  overflow-y: auto;
++  padding: 2rem 1.5rem;
++}
++
++/* ── Card grid ──────────────────────────────────────── */
++.cn-grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fill, minmax(200px, 240px));
++  grid-auto-rows: min-content;
++  align-content: start;
++  gap: 0.75rem;
++  width: 100%;
++  max-width: 820px;
++}
++
++/* Bond color dots */
++.cn-bond-dot {
++  display: inline-block;
++  width: 8px;
++  height: 8px;
++  border-radius: 50%;
++  flex-shrink: 0;
++}
++
++.bond-divine    .cn-bond-dot { background: #a78bfa; }
++.bond-family    .cn-bond-dot { background: #f97316; }
++.bond-ally      .cn-bond-dot { background: var(--gold-400); }
++.bond-ward      .cn-bond-dot { background: #34d399; }
++.bond-child     .cn-bond-dot { background: #fb923c; }
++.bond-adversary .cn-bond-dot { background: #f87171; }
++
++.cn-card {
++  background: rgba(255, 251, 240, 0.6);
++  border: 1px solid var(--border);
++  border-radius: 8px;
++  padding: 1rem;
++  text-align: left;
++  cursor: pointer;
++  font-family: var(--font-body);
++  transition: border-color var(--transition), background var(--transition), transform var(--transition);
++  display: flex;
++  flex-direction: column;
++  gap: 0.3rem;
++}
++
++.cn-card:hover {
++  border-color: rgba(245, 158, 11, 0.4);
++  background: rgba(255, 251, 240, 0.9);
++  transform: translateY(-2px);
++}
++
++.cn-card.is-selected {
++  border-color: var(--gold-500);
++  background: rgba(255, 251, 240, 0.95);
++  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
++}
++
++.cn-card-top {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  margin-bottom: 0.2rem;
++}
++
++.cn-presence-tag {
++  font-size: 0.6rem;
++  letter-spacing: 0.08em;
++  text-transform: uppercase;
++  color: var(--text-muted);
++  opacity: 0.7;
++}
++
++.presence-a    .cn-presence-tag { color: #60a5fa; opacity: 1; }
++.presence-b    .cn-presence-tag { color: #34d399; opacity: 1; }
++.presence-both .cn-presence-tag { color: var(--text-muted); }
++
++.cn-card-name {
++  font-family: var(--font-display);
++  font-size: 1.05rem;
++  color: var(--amber-deep);
++  font-weight: 400;
++}
++
++.cn-card-title {
++  font-size: 0.72rem;
++  color: var(--text-secondary);
++  line-height: 1.4;
++}
++
++.cn-card-bond {
++  font-size: 0.65rem;
++  letter-spacing: 0.08em;
++  text-transform: uppercase;
++  color: var(--text-muted);
++  margin-top: 0.2rem;
++}
++
++/* ── Detail panel ───────────────────────────────────── */
++.cn-detail {
++  border-left: 1px solid var(--border);
++  overflow-y: auto;
++  position: sticky;
++  top: 0;
++  max-height: calc(100vh - 120px);
++  background: rgba(255, 251, 240, 0.97);
++}
++
++.cn-detail-inner {
++  padding: 2rem 1.75rem;
++  display: flex;
++  flex-direction: column;
++  gap: 1rem;
++}
++
++.cn-detail-close {
++  align-self: flex-end;
++  background: transparent;
++  border: none;
++  font-size: 0.9rem;
++  color: var(--text-muted);
++  cursor: pointer;
++  padding: 0.25rem 0.5rem;
++  transition: color var(--transition);
++}
++
++.cn-detail-close:hover { color: var(--gold-600); }
++
++.cn-detail-eyebrow {
++  font-size: 0.65rem;
++  letter-spacing: 0.14em;
++  text-transform: uppercase;
++  color: var(--text-muted);
++}
++
++.cn-detail-name {
++  font-family: var(--font-display);
++  font-size: 2rem;
++  font-weight: 400;
++  color: var(--amber-deep);
++  line-height: 1;
++}
++
++.cn-detail-title {
++  font-family: var(--font-display);
++  font-style: italic;
++  font-size: 0.875rem;
++  color: var(--text-secondary);
++  margin-top: -0.5rem;
++}
++
++.cn-detail-entries {
++  display: flex;
++  flex-direction: column;
++  gap: 1rem;
++  margin-top: 0.25rem;
++}
++
++.cn-detail-entry {
++  display: flex;
++  flex-direction: column;
++  gap: 0.4rem;
++}
++
++.cn-entry-label {
++  font-size: 0.62rem;
++  font-weight: 700;
++  letter-spacing: 0.12em;
++  text-transform: uppercase;
++  padding: 0.15rem 0.5rem;
++  border-radius: 3px;
++  align-self: flex-start;
++}
++
++.cn-label-a {
++  background: rgba(96, 165, 250, 0.15);
++  color: #1d4ed8;
++}
++
++.cn-label-b {
++  background: rgba(52, 211, 153, 0.15);
++  color: #065f46;
++}
++
++.cn-entry-text {
++  font-size: 0.85rem;
++  line-height: 1.7;
++  color: var(--text-primary);
++}
++
++.cn-detail-quote {
++  margin-top: 0.5rem;
++  padding: 0.75rem 1rem;
++  border-left: 2px solid var(--gold-300);
++  background: rgba(252, 211, 77, 0.08);
++  border-radius: 0 4px 4px 0;
++}
++
++.cn-detail-quote p {
++  font-family: var(--font-display);
++  font-style: italic;
++  font-size: 0.875rem;
++  line-height: 1.65;
++  color: var(--text-secondary);
++}
++
++.cn-detail-quote cite {
++  display: block;
++  margin-top: 0.5rem;
++  font-size: 0.68rem;
++  letter-spacing: 0.08em;
++  text-transform: uppercase;
++  color: var(--text-muted);
++  font-style: normal;
++}
++
++/* ── Responsive ─────────────────────────────────────── */
++@media (max-width: 900px) {
++  .cn-body { grid-template-columns: 1fr; }
++
++  .cn-detail {
++    position: static;
++    max-height: none;
++    border-left: none;
++    border-top: 1px solid var(--border);
++  }
++
++  .cn-grid-wrapper, .cn-filters { padding: 1.5rem; }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .cn-card, .cn-filter-btn { transition: none; }
++}
+diff --git a/IceBerg/src/home.css b/IceBerg/src/home.css
+new file mode 100644
+index 0000000..2a130d0
+--- /dev/null
++++ b/IceBerg/src/home.css
+@@ -0,0 +1,264 @@
++.viewport {
++  display: grid;
++  grid-template-columns: 200px 1fr 200px;
++  height: 100vh;
++  max-width: 1280px;
++  margin: 0 auto;
++  padding: 0 2rem;
++  overflow: hidden;
++}
++
++/* ── Left column ────────────────────────────────────── */
++.left-col {
++  display: flex;
++  flex-direction: column;
++  justify-content: space-between;
++  align-items: flex-start;
++  padding: 3rem 1.5rem 3rem 0;
++  border-right: 1px solid var(--border);
++}
++
++.sigil {
++  width: 88px;
++  height: 88px;
++  color: var(--gold-500);
++  opacity: 0.85;
++  filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.4));
++}
++
++.side-nav {
++  display: flex;
++  flex-direction: column;
++  gap: 0.6rem;
++}
++
++.nav-item {
++  font-size: 0.78rem;
++  font-weight: 400;
++  letter-spacing: 0.12em;
++  text-transform: uppercase;
++  color: var(--text-muted);
++  text-decoration: none;
++  padding: 0.3rem 0.75rem;
++  border-left: 2px solid transparent;
++  transition: color var(--transition), border-color var(--transition);
++}
++
++.nav-item:hover,
++.nav-item.is-active {
++  color: var(--gold-500);
++  border-left-color: var(--gold-500);
++}
++
++.side-label {
++  font-size: 0.7rem;
++  letter-spacing: 0.12em;
++  text-transform: uppercase;
++  color: var(--text-muted);
++  opacity: 0.6;
++}
++
++/* ── Center column ──────────────────────────────────── */
++.center-col {
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  text-align: center;
++  padding: 3rem;
++  gap: 2.5rem;
++}
++
++.hero-header {
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  gap: 0.6rem;
++}
++
++.eyebrow {
++  font-size: 0.75rem;
++  font-weight: 600;
++  letter-spacing: 0.2em;
++  text-transform: uppercase;
++  color: var(--gold-500);
++}
++
++.hero-name {
++  font-family: var(--font-hero);
++  font-size: clamp(4.5rem, 9vw, 8rem);
++  font-weight: 600;
++  font-style: italic;
++  line-height: 1;
++  letter-spacing: -0.01em;
++  color: var(--amber-deep);
++  text-shadow:
++    0 0 60px rgba(245, 158, 11, 0.35),
++    0 2px 4px rgba(0, 0, 0, 0.08);
++}
++
++.hero-epithet {
++  font-family: var(--font-display);
++  font-style: italic;
++  font-size: 1.1rem;
++  font-weight: 300;
++  color: var(--text-secondary);
++  letter-spacing: 0.04em;
++}
++
++.hero-quote {
++  border-left: none;
++  max-width: 38ch;
++}
++
++.hero-quote p {
++  font-family: var(--font-display);
++  font-style: italic;
++  font-size: 1.2rem;
++  font-weight: 300;
++  line-height: 1.75;
++  color: var(--text-secondary);
++  position: relative;
++}
++
++.hero-quote p::before {
++  content: '\201C';
++  position: absolute;
++  left: -1.2rem;
++  top: -0.25rem;
++  font-size: 2.5rem;
++  color: var(--gold-300);
++  line-height: 1;
++  font-family: var(--font-display);
++}
++
++.hero-quote p::after {
++  content: '\201D';
++  font-size: 2.5rem;
++  color: var(--gold-300);
++  line-height: 0;
++  vertical-align: -0.6rem;
++  font-family: var(--font-display);
++  margin-left: 0.15rem;
++}
++
++.hero-cta-row {
++  display: flex;
++  gap: 1rem;
++  align-items: center;
++}
++
++/* ── Buttons ────────────────────────────────────────── */
++.btn-primary {
++  display: inline-block;
++  padding: 0.65rem 1.75rem;
++  background: var(--gold-500);
++  color: #fff;
++  border: none;
++  border-radius: 4px;
++  font-size: 0.85rem;
++  font-family: var(--font-body);
++  font-weight: 600;
++  letter-spacing: 0.04em;
++  text-decoration: none;
++  cursor: pointer;
++  box-shadow: 0 2px 12px rgba(217, 119, 6, 0.4);
++  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
++}
++
++.btn-primary:hover {
++  background: var(--gold-600);
++  transform: translateY(-1px);
++  box-shadow: 0 4px 18px rgba(217, 119, 6, 0.5);
++}
++
++.btn-ghost {
++  display: inline-block;
++  padding: 0.65rem 1.5rem;
++  background: transparent;
++  color: var(--text-secondary);
++  border: 1px solid var(--border);
++  border-radius: 4px;
++  font-size: 0.85rem;
++  font-family: var(--font-body);
++  font-weight: 500;
++  text-decoration: none;
++  transition: border-color var(--transition), color var(--transition);
++}
++
++.btn-ghost:hover {
++  border-color: var(--gold-400);
++  color: var(--gold-600);
++}
++
++/* ── Right column ───────────────────────────────────── */
++.right-col {
++  display: flex;
++  flex-direction: column;
++  justify-content: space-between;
++  align-items: flex-end;
++  padding: 3rem 0 3rem 1.5rem;
++  border-left: 1px solid var(--border);
++}
++
++.attributes {
++  display: flex;
++  flex-direction: column;
++  gap: 1.5rem;
++  align-items: flex-end;
++}
++
++.attr {
++  display: flex;
++  flex-direction: column;
++  align-items: flex-end;
++  gap: 0.15rem;
++}
++
++.attr-label {
++  font-size: 0.65rem;
++  letter-spacing: 0.15em;
++  text-transform: uppercase;
++  color: var(--text-muted);
++  opacity: 0.7;
++}
++
++.attr-value {
++  font-family: var(--font-display);
++  font-size: 0.9rem;
++  font-style: italic;
++  color: var(--text-secondary);
++}
++
++.scroll-ornament {
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  gap: 0.5rem;
++  color: var(--gold-400);
++  opacity: 0.6;
++}
++
++.ornament-line {
++  display: block;
++  width: 1px;
++  height: 40px;
++  background: currentColor;
++}
++
++.ornament-glyph { font-size: 0.75rem; }
++
++.right-label {
++  font-size: 0.7rem;
++  letter-spacing: 0.12em;
++  text-transform: uppercase;
++  color: var(--text-muted);
++  opacity: 0.6;
++  writing-mode: vertical-rl;
++  text-orientation: mixed;
++  transform: rotate(180deg);
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .btn-primary, .btn-ghost, .nav-item { transition: none; }
++}
+diff --git a/IceBerg/src/index.css b/IceBerg/src/index.css
+new file mode 100644
+index 0000000..02fa101
+--- /dev/null
++++ b/IceBerg/src/index.css
+@@ -0,0 +1,124 @@
++*, *::before, *::after {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++:root {
++  --gold-100: #fffbf0;
++  --gold-200: #fef3c7;
++  --gold-300: #fcd34d;
++  --gold-400: #f59e0b;
++  --gold-500: #d97706;
++  --gold-600: #b45309;
++  --amber-deep: #78350f;
++  --ember:      #92400e;
++
++  --text-primary:   #1c0a00;
++  --text-secondary: #6b3a12;
++  --text-muted:     #a16207;
++
++  --surface:        rgba(255, 251, 240, 0.6);
++  --surface-solid:  #fffbf0;
++
++  --border: rgba(245, 158, 11, 0.25);
++
++  --font-hero:    "Playfair Display", Georgia, serif;
++  --font-display: "Cormorant Garamond", Georgia, serif;
++  --font-body:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
++
++  --transition: 200ms ease;
++}
++
++html, body, #root {
++  height: 100%;
++}
++
++body {
++  font-family: var(--font-body);
++  color: var(--text-primary);
++  background: var(--gold-100);
++  background-image:
++    radial-gradient(ellipse 60% 70% at 50% 50%, rgba(251, 191, 36, 0.18) 0%, transparent 70%),
++    radial-gradient(ellipse 100% 100% at 50% -10%, rgba(245, 158, 11, 0.12) 0%, transparent 60%);
++}
++
++/* Shared page header (timelines + connections) */
++.page-header {
++  display: grid;
++  grid-template-columns: 1fr auto 1fr;
++  align-items: center;
++  gap: 1rem;
++  padding: 2rem 3rem 1.5rem;
++  border-bottom: 1px solid var(--border);
++  position: sticky;
++  top: 0;
++  background: rgba(255, 251, 240, 0.92);
++  backdrop-filter: blur(10px);
++  z-index: 20;
++}
++
++.page-back {
++  font-size: 0.8rem;
++  font-weight: 600;
++  letter-spacing: 0.06em;
++  text-transform: uppercase;
++  color: var(--text-muted);
++  text-decoration: none;
++  transition: color var(--transition);
++  justify-self: start;
++}
++
++.page-back:hover { color: var(--gold-500); }
++
++.page-title-group { text-align: center; }
++
++.page-eyebrow {
++  font-size: 0.65rem;
++  letter-spacing: 0.18em;
++  text-transform: uppercase;
++  color: var(--text-muted);
++  margin-bottom: 0.2rem;
++}
++
++.page-title {
++  font-family: var(--font-display);
++  font-size: 2rem;
++  font-weight: 300;
++  color: var(--amber-deep);
++  letter-spacing: 0.04em;
++  line-height: 1;
++}
++
++.page-subtitle {
++  font-family: var(--font-display);
++  font-style: italic;
++  font-weight: 300;
++  font-size: 1rem;
++  color: var(--text-secondary);
++  margin-top: 0.2rem;
++}
++
++/* Shared footer */
++.page-footer {
++  text-align: center;
++  padding: 1.5rem;
++  font-size: 0.7rem;
++  letter-spacing: 0.1em;
++  text-transform: uppercase;
++  color: var(--text-muted);
++  opacity: 0.6;
++  border-top: 1px solid var(--border);
++}
++
++@media (max-width: 768px) {
++  .page-header {
++    grid-template-columns: 1fr;
++    grid-template-rows: auto auto auto;
++    text-align: center;
++    padding: 1.5rem;
++    gap: 0.75rem;
++  }
++
++  .page-back { justify-self: center; }
++}
+diff --git a/IceBerg/src/index.tsx b/IceBerg/src/index.tsx
+new file mode 100644
+index 0000000..eec2ee4
+--- /dev/null
++++ b/IceBerg/src/index.tsx
+@@ -0,0 +1,23 @@
++import { render } from 'solid-js/web'
++import { Router, Route } from '@solidjs/router'
++import App from './App'
++import Timelines from './pages/Timelines'
++import Connections from './pages/Connections'
++import Books from './pages/Books'
++import Worldbuilding from './pages/Worldbuilding'
++import Audience from './pages/Audience'
++import './index.css'
++
++render(
++  () => (
++    <Router>
++      <Route path="/" component={App} />
++      <Route path="/timelines" component={Timelines} />
++      <Route path="/connections" component={Connections} />
++      <Route path="/books" component={Books} />
++      <Route path="/worldbuilding" component={Worldbuilding} />
++      <Route path="/audience" component={Audience} />
++    </Router>
++  ),
++  document.getElementById('root')!
++)
+diff --git a/IceBerg/src/pages/Audience.tsx b/IceBerg/src/pages/Audience.tsx
+new file mode 100644
+index 0000000..8156808
+--- /dev/null
++++ b/IceBerg/src/pages/Audience.tsx
+@@ -0,0 +1,64 @@
++import { A } from '@solidjs/router'
++import '../audience.css'
++
++export default function Audience() {
++  return (
++    <div class="au-page">
++      <header class="page-header">
++        <A href="/" class="page-back">← Uriel</A>
++        <div class="page-title-group">
++          <p class="page-eyebrow">Archive — Petitions & correspondence</p>
++          <h1 class="page-title">Audience</h1>
++          <p class="page-subtitle">The Throne receives all who seek her.</p>
++        </div>
++        <div />
++      </header>
++
++      <main class="au-main">
++        <div class="au-inner">
++          <p class="au-lore">
++            Uriel has stood at the gate of Eden for longer than memory. She has
++            judged the worthy and the unworthy alike — without cruelty, without
++            mercy, without attachment. She does not turn away those who approach
++            with sincerity.
++          </p>
++
++          <div class="au-divider" aria-hidden="true">
++            <span class="au-divider-line" />
++            <span class="au-divider-glyph">✦</span>
++            <span class="au-divider-line" />
++          </div>
++
++          <div class="au-contacts">
++            <a
++              class="au-contact-item"
++              href="mailto:[REDACTED_EMAIL]"
++            >
++              <span class="au-contact-label">Email</span>
++              <span class="au-contact-value">[REDACTED_EMAIL]</span>
++            </a>
++
++            <a
++              class="au-contact-item"
++              href="https://www.instagram.com/auriel.solaris"
++              target="_blank"
++              rel="noopener noreferrer"
++            >
++              <span class="au-contact-label">Instagram</span>
++              <span class="au-contact-value">@auriel.solaris</span>
++            </a>
++          </div>
++
++          <p class="au-footnote">
++            All petitions are read. Not all are answered. Such is the nature of
++            the Throne.
++          </p>
++        </div>
++      </main>
++
++      <footer class="page-footer">
++        <p>Eden, Third Heaven &nbsp;·&nbsp; Archive of the Throne of Wisdom</p>
++      </footer>
++    </div>
++  )
++}
+diff --git a/IceBerg/src/pages/Books.tsx b/IceBerg/src/pages/Books.tsx
+new file mode 100644
+index 0000000..f06f418
+--- /dev/null
++++ b/IceBerg/src/pages/Books.tsx
+@@ -0,0 +1,107 @@
++import { A } from '@solidjs/router'
++import '../books.css'
++
++interface Book {
++  title: string
++  subtitle: string
++  timeline: string
++  status: 'published' | 'forthcoming'
++  description: string
++  links?: { label: string; url: string }[]
++}
++
++const books: Book[] = [
++  {
++    title: 'Book of Beginnings',
++    subtitle: 'Timeline A — Vol. I',
++    timeline: 'A',
++    status: 'published',
++    description:
++      'The origin. YHWH and Lucifer create the firstborn angels. Uriel takes her post as the recorder, the observer, the neutral. She watches Adam and Eve in the garden. She watches the Fall. She stands at the gate with a flaming sword and learns what it means to judge.',
++    links: [
++      { label: 'Amazon', url: 'https://www.amazon.in/dp/B0H12T8MZ6' },
++      { label: 'Goodreads', url: 'https://www.goodreads.com/book/show/252340071.Book_of_Beginnings' },
++    ],
++  },
++  {
++    title: 'Book of Exile',
++    subtitle: 'Timeline A — Vol. II',
++    timeline: 'A',
++    status: 'forthcoming',
++    description:
++      'The continuation of Timeline A. Uriel at the gate of Redeemed Eden, holding the sword of truth, judging the souls of the righteous. The machinery of salvation turns. She is alone — and the system works.',
++  },
++  {
++    title: 'Serpent of the Emerald Eye',
++    subtitle: 'Timeline B — Vol. I',
++    timeline: 'B',
++    status: 'forthcoming',
++    description:
++      'The divergence. Uriel sees Eve before the forbidden tree and makes a choice: she will teach. She becomes the Green Vine Snake, enters Eden, and speaks in questions. The Fall is not a catastrophe. It is a lesson — and it costs Uriel everything.',
++  },
++  {
++    title: 'Bloodline of Abel',
++    subtitle: 'Timeline B — Vol. II',
++    timeline: 'B',
++    status: 'forthcoming',
++    description:
++      'A fallen angel. A shepherd who asks nothing. A marriage, four children, and a fixed point that cannot be broken. Abel chooses to die. Uriel carries the twins alone through grief, and begins the long work of raising them without him.',
++  },
++]
++
++export default function Books() {
++  return (
++    <div class="bk-page">
++      <header class="page-header">
++        <A href="/" class="page-back">← Uriel</A>
++        <div class="page-title-group">
++          <p class="page-eyebrow">Archive — Published works</p>
++          <h1 class="page-title">The Books</h1>
++          <p class="page-subtitle">Four volumes. Two timelines. One soul.</p>
++        </div>
++        <div />
++      </header>
++
++      <main class="bk-main">
++        <div class="bk-grid">
++          {books.map(book => (
++            <article class={`bk-card timeline-${book.timeline.toLowerCase()}`}>
++              <div class="bk-card-top">
++                <span class={`bk-timeline-tag timeline-${book.timeline.toLowerCase()}`}>
++                  Timeline {book.timeline}
++                </span>
++                <span class={`bk-status is-${book.status}`}>
++                  {book.status === 'published' ? 'Available now' : 'Forthcoming'}
++                </span>
++              </div>
++
++              <h2 class="bk-title">{book.title}</h2>
++              <p class="bk-subtitle">{book.subtitle}</p>
++
++              <p class="bk-description">{book.description}</p>
++
++              {book.links && (
++                <div class="bk-links">
++                  {book.links.map(link => (
++                    <a
++                      href={link.url}
++                      class="bk-link"
++                      target="_blank"
++                      rel="noopener noreferrer"
++                    >
++                      {link.label} ↗
++                    </a>
++                  ))}
++                </div>
++              )}
++            </article>
++          ))}
++        </div>
++      </main>
++
++      <footer class="page-footer">
++        <p>Eden, Third Heaven &nbsp;·&nbsp; Archive of the Throne of Wisdom</p>
++      </footer>
++    </div>
++  )
++}
+diff --git a/IceBerg/src/pages/Connections.tsx b/IceBerg/src/pages/Connections.tsx
+new file mode 100644
+index 0000000..60a47b3
+--- /dev/null
++++ b/IceBerg/src/pages/Connections.tsx
+@@ -0,0 +1,291 @@
++import { createSignal, For, Show } from 'solid-js'
++import { A } from '@solidjs/router'
++import '../connections.css'
++
++type Presence = 'a' | 'b' | 'both'
++type Bond = 'divine' | 'adversary' | 'family' | 'ally' | 'ward' | 'child'
++
++interface Connection {
++  name: string
++  title: string
++  presence: Presence
++  bond: Bond
++  eyeA?: string
++  eyeB?: string
++  summaryA?: string
++  summaryB?: string
++  quote?: string
++  quoteSource?: string
++}
++
++const connections: Connection[] = [
++  {
++    name: 'YHWH',
++    title: 'The Creator — Mother',
++    presence: 'both',
++    bond: 'divine',
++    summaryA: 'Uriel serves her without question as judge and Guardian. After the judgment of Cain, YHWH withdraws from creation. Uriel remains at her post. The system holds.',
++    summaryB: 'She judges Uriel after Eden — exile, sword taken, forbidden to teach. After the sentence, their eyes meet. Warmth. Recognition. Not forgiveness. Presence.',
++    quote: 'Something small and warm lives in Uriel\'s marrow, in a place Lucifer did not think to reach. YHWH\'s warmth, brushing against the edges of the design.',
++  },
++  {
++    name: 'Lucifer',
++    title: 'Co-creator — The Architect of Her Function',
++    presence: 'both',
++    bond: 'divine',
++    summaryA: 'He shaped her: Observer. Recorder. Neutral. Three words woven into her sinew. After the council, no significant contact. The distance is structural — she is his design, not his confidant.',
++    summaryB: 'He finds her on the periphery and offers her a side in the war. She agrees on one condition: the humans survive. He promises. On the battlefield she falls — and he does not save her.',
++    quote: '"Neutrality is no longer available."',
++  },
++  {
++    name: 'Metatron',
++    title: 'Keeper of the Akashic Records — Fellow Steward',
++    presence: 'a',
++    bond: 'ally',
++    summaryA: 'Metatron proposes the Grigori mission. Uriel is assigned to assemble the team. She reviews Gabriel, Raphael, Michael — finds them each wrong for the work, and recognises herself as the correct instrument. The mission is never approved. The gap in the archive remains.',
++  },
++  {
++    name: 'Michael',
++    title: 'Steward of Heaven — Fortitude & Justice',
++    presence: 'both',
++    bond: 'ally',
++    summaryA: 'They serve together among the five Stewards. Both hold virtues of justice. They are not close — they operate in different registers. Parallel rather than intertwined.',
++    summaryB: 'Enemies on the battlefield. He wounds her, or she wounds him — the record is unclear. She hesitates before striking an angel she once worked beside. That hesitation costs her everything.',
++  },
++  {
++    name: 'Gabriel',
++    title: 'Steward of Heaven — Faith & Kindness',
++    presence: 'both',
++    bond: 'ally',
++    summaryA: 'Fellow Steward. Uriel considers him for the Grigori mission — extensive human contact, reliable, precise. But his nature is motion: arrive, deliver, depart. He cannot stay. She does not choose him.',
++    summaryB: 'He carries Lucifer\'s message to Hell. He tells Lucifer about Uriel\'s judgment. He does not speak to her directly.',
++  },
++  {
++    name: 'Raphael',
++    title: 'Steward of Heaven — Temperance & Healing',
++    presence: 'a',
++    bond: 'ally',
++    summaryA: 'Fellow Steward. Uriel considers him for the Grigori mission. His first instinct when confronted with suffering is to mend. Glorious — and catastrophic for a mission defined by non-interference. She does not choose him.',
++  },
++  {
++    name: 'Eve',
++    title: 'First Woman — Daughter of Eden',
++    presence: 'a',
++    bond: 'ward',
++    summaryA: 'Uriel watches her from the gate. Eve looks at the forbidden tree not with hunger but with questions — why is this one forbidden? Uriel recognises herself. She does not intervene. The small, warm pressure in her chest becomes recognition.',
++  },
++  {
++    name: 'Eve',
++    title: 'First Woman — Mother-in-law',
++    presence: 'b',
++    bond: 'family',
++    summaryB: 'Uriel teaches her as the Green Vine Snake. Eve eats with her eyes open. Years later, in the settlement, Eve recognises her. She does not accuse. She thanks her.',
++    quote: '"Daughters do what they must. Even when it costs them everything."',
++    quoteSource: 'Eve, to Uriel — Timeline B',
++  },
++  {
++    name: 'Abel',
++    title: 'Shepherd — Husband',
++    presence: 'both',
++    bond: 'family',
++    summaryA: 'Uriel receives his soul at the gate. She judges him clean and admits him to Eden. She does not know him as a person. He is a record. Filed.',
++    summaryB: 'He finds her broken in a field — too thin, too still, her clothes in rags. He does not ask who she is or what she has done. He brings bread. He carries water. He is the father of her four children. He chooses to die rather than break the fixed point. She grieves him for the rest of her life.',
++    quote: '"You\'re the reason I exist at all."',
++    quoteSource: 'Abel, to Uriel — Timeline B',
++  },
++  {
++    name: 'Cain',
++    title: 'Firstborn of Adam & Eve — The Wanderer',
++    presence: 'both',
++    bond: 'ward',
++    summaryA: 'She descends to pronounce judgment. She tells him the truth: there was no chosen, the peace on Abel\'s face was contentment not favour, he mistook ease for election. She curses him, marks him for protection, and lets him walk into the forest.',
++    summaryB: 'Brother-in-law. The one who kills Abel. Uriel does not kill him. She knows YHWH will handle it. She washes Abel\'s blood from her hands.',
++    quote: '"The ground will not yield for you. You will be a fugitive and a wanderer, marked by what you have done, forever moving, forever alone."',
++    quoteSource: 'Uriel\'s judgment of Cain — Timeline A',
++  },
++  {
++    name: 'Adam',
++    title: 'First Man — Father-in-law',
++    presence: 'b',
++    bond: 'family',
++    summaryB: 'He accepts Uriel into the settlement without question or condition. His welcome is simple and absolute.',
++    quote: '"If he brought you here, you belong here."',
++    quoteSource: 'Adam, to Uriel — Timeline B',
++  },
++  {
++    name: 'Ariel',
++    title: 'Daughter — Lion of God',
++    presence: 'b',
++    bond: 'child',
++    summaryB: 'Firstborn. She watches everything, remembers her father. Uriel sees herself in Ariel\'s stillness — the same quality of attention, the same refusal to look away. She is her mother\'s daughter in the way that matters most.',
++  },
++  {
++    name: 'John',
++    title: 'Son — God Is Gracious',
++    presence: 'b',
++    bond: 'child',
++    summaryB: 'The most human name Uriel could have chosen. He is too young to remember Abel. Uriel will have to tell him who his father was — find words for a man who chose to die so that John could live.',
++  },
++  {
++    name: 'Noxiel',
++    title: 'Son — Darkness of God',
++    presence: 'b',
++    bond: 'child',
++    summaryB: 'Twin, younger. Born in spring, after Abel\'s death — conceived before it. He carries something dark in his eyes. Uriel names him for what she carries: the grief, the shadow the fixed point cast over everything.',
++  },
++  {
++    name: 'Sariel',
++    title: 'Son — Strength of God',
++    presence: 'b',
++    bond: 'child',
++    summaryB: 'Twin, younger. Loud, demanding, impossible to ignore. Uriel names him for what she needs to become. He is her instruction, written in the form of a child.',
++  },
++]
++
++const bondLabels: Record<Bond, string> = {
++  divine:   'Divine bond',
++  adversary: 'Adversary',
++  family:   'Family',
++  ally:     'Ally',
++  ward:     'Ward',
++  child:    'Child',
++}
++
++const presenceLabels: Record<Presence, string> = {
++  a:    'Timeline A only',
++  b:    'Timeline B only',
++  both: 'Both timelines',
++}
++
++type Filter = 'all' | Presence | Bond
++
++export default function Connections() {
++  const [active, setActive] = createSignal<string | null>(null)
++  const [filter, setFilter] = createSignal<Filter>('all')
++
++  const filters: { label: string; value: Filter }[] = [
++    { label: 'All', value: 'all' },
++    { label: 'Timeline A', value: 'a' },
++    { label: 'Timeline B', value: 'b' },
++    { label: 'Both timelines', value: 'both' },
++    { label: 'Family', value: 'family' },
++    { label: 'Divine', value: 'divine' },
++    { label: 'Ally', value: 'ally' },
++    { label: 'Ward', value: 'ward' },
++    { label: 'Child', value: 'child' },
++  ]
++
++  const filtered = () => {
++    const f = filter()
++    if (f === 'all') return connections
++    return connections.filter(c =>
++      c.presence === f ||
++      (f === 'both' && c.presence === 'both') ||
++      c.bond === f
++    )
++  }
++
++  const selected = () => connections.find(c => c.name === active()) ?? null
++
++  return (
++    <div class="cn-page">
++      {/* Header */}
++      <header class="page-header">
++        <A href="/" class="page-back">← Uriel</A>
++        <div class="page-title-group">
++          <p class="page-eyebrow">Archive — Relational record</p>
++          <h1 class="page-title">Connections</h1>
++          <p class="page-subtitle">Those who shaped her. Those she shaped.</p>
++        </div>
++        <div class="cn-header-right" />
++      </header>
++
++      {/* Filters */}
++      <div class="cn-filters">
++        <For each={filters}>
++          {f => (
++            <button
++              class="cn-filter-btn"
++              classList={{ 'is-active': filter() === f.value }}
++              onClick={() => setFilter(f.value)}
++            >
++              {f.label}
++            </button>
++          )}
++        </For>
++      </div>
++
++      {/* Grid + detail panel */}
++      <div class="cn-body">
++        <div class="cn-grid-wrapper">
++        <div class="cn-grid">
++          <For each={filtered()}>
++            {conn => (
++              <button
++                class="cn-card"
++                classList={{
++                  'is-selected': active() === conn.name,
++                  [`bond-${conn.bond}`]: true,
++                  [`presence-${conn.presence}`]: true,
++                }}
++                onClick={() => setActive(v => v === conn.name ? null : conn.name)}
++              >
++                <div class="cn-card-top">
++                  <span class="cn-bond-dot" aria-hidden="true" />
++                  <span class="cn-presence-tag">{presenceLabels[conn.presence]}</span>
++                </div>
++                <p class="cn-card-name">{conn.name}</p>
++                <p class="cn-card-title">{conn.title}</p>
++                <p class="cn-card-bond">{bondLabels[conn.bond]}</p>
++              </button>
++            )}
++          </For>
++        </div>
++        </div>
++
++        {/* Detail panel */}
++        <Show when={selected()}>
++          {conn => (
++            <aside class="cn-detail">
++              <div class="cn-detail-inner">
++                <button class="cn-detail-close" onClick={() => setActive(null)} aria-label="Close">✕</button>
++
++                <p class="cn-detail-eyebrow">{bondLabels[conn().bond]} &nbsp;·&nbsp; {presenceLabels[conn().presence]}</p>
++                <h2 class="cn-detail-name">{conn().name}</h2>
++                <p class="cn-detail-title">{conn().title}</p>
++
++                <div class="cn-detail-entries">
++                  <Show when={conn().summaryA}>
++                    <div class="cn-detail-entry">
++                      <span class="cn-entry-label cn-label-a">Timeline A</span>
++                      <p class="cn-entry-text">{conn().summaryA}</p>
++                    </div>
++                  </Show>
++                  <Show when={conn().summaryB}>
++                    <div class="cn-detail-entry">
++                      <span class="cn-entry-label cn-label-b">Timeline B</span>
++                      <p class="cn-entry-text">{conn().summaryB}</p>
++                    </div>
++                  </Show>
++                </div>
++
++                <Show when={conn().quote}>
++                  <blockquote class="cn-detail-quote">
++                    <p>{conn().quote}</p>
++                    <Show when={conn().quoteSource}>
++                      <cite>{conn().quoteSource}</cite>
++                    </Show>
++                  </blockquote>
++                </Show>
++              </div>
++            </aside>
++          )}
++        </Show>
++      </div>
++
++      <footer class="page-footer">
++        <p>Eden, Third Heaven &nbsp;·&nbsp; Archive of the Throne of Wisdom</p>
++      </footer>
++    </div>
++  )
++}
+diff --git a/IceBerg/src/pages/Timelines.tsx b/IceBerg/src/pages/Timelines.tsx
+new file mode 100644
+index 0000000..e39eee0
+--- /dev/null
++++ b/IceBerg/src/pages/Timelines.tsx
+@@ -0,0 +1,234 @@
++import { createSignal, For, Show } from 'solid-js'
++import { A } from '@solidjs/router'
++import '../timelines.css'
++
++interface Beat {
++  title: string
++  summary: string
++  detail: string
++}
++
++interface Timeline {
++  id: string
++  label: string
++  eyebrow: string
++  descriptor: string
++  eyeColor: string
++  eyeColorHex: string
++  beats: Beat[]
++}
++
++const timelines: Timeline[] = [
++  {
++    id: 'a',
++    label: 'Timeline A',
++    eyebrow: 'Book of Beginnings → Book of Exile',
++    descriptor: 'The Faithful Recorder',
++    eyeColor: 'Blue',
++    eyeColorHex: '#60a5fa',
++    beats: [
++      {
++        title: 'Origin & creation',
++        summary: 'Created by YHWH and Lucifer as the fourth firstborn. Purpose woven into her sinew: Observer. Recorder. Neutral.',
++        detail: 'Lucifer shapes her with precision — still, unreadable, tall. Her eyes are the blue of deep water, of the space between stars. She does not smile. Her function is the archive: she moves through facets of frozen light, recording human deeds with perfect fidelity. She feels nothing — or almost nothing. A small, warm pressure lives in her marrow, in a place Lucifer\'s design did not reach. She does not name it. She does not know she can.',
++      },
++      {
++        title: 'The gap',
++        summary: 'The archive records actions but not why. A woman shares bread — the archive shows the act, not her reasoning. Uriel cannot file incomplete records.',
++        detail: 'She attends the council where YHWH and Lucifer debate free will. YHWH argues for love that must be chosen. Lucifer argues for order without suffering. Neither asks what humans actually need. Uriel stands at the edge, silent, but she names the gap internally: education. Free will without instruction is cruelty. She does not speak. She needs to be certain first.',
++      },
++      {
++        title: 'The proposal & the garden',
++        summary: 'Uriel proposes the Grigori mission: angels stationed on Earth to observe and report. It is never approved.',
++        detail: 'She is sent to guard the gate of Eden. She stands at the threshold, watching Adam and Eve. Eve draws her attention — the way she looks at the forbidden tree, not with hunger but with questions. Why is this one forbidden? What is on the other side? Uriel recognises herself in Eve\'s questioning. The small, warm pressure in her chest becomes recognition.',
++      },
++      {
++        title: 'Judgment & elevation',
++        summary: 'She does not interfere. After the exile, YHWH expands the heavenly bureaucracy. Uriel receives a flaming sword and becomes Guardian of Eden\'s gate.',
++        detail: 'She is no longer merely a recorder — she is a judge. Her eyes remain blue. She stands at the gate of paradise, determining which souls are worthy to enter. She judges without cruelty, without mercy, without attachment. The system works.',
++      },
++      {
++        title: 'The judgment of Cain',
++        summary: 'When Cain kills Abel, Uriel descends to pronounce judgment. She tells him the truth: there was no chosen. God does not speak in the silence.',
++        detail: 'She sees everything: Cain\'s years of watching, his certainty that Abel was favoured, the moment by the stream, the knife, Abel\'s dying question — why? She tells Cain the peace on Abel\'s face was not favour — it was contentment. Cain mistook ease for election. She curses him: the ground will not yield. He will be a fugitive and a wanderer. But she does not kill him. She marks him for protection and lets him walk away. She tells Eve that Abel is home. At peace. With the One who made him.',
++      },
++      {
++        title: 'Status at end of Timeline A',
++        summary: 'Guardian of Redeemed Eden. Holds the flaming sword of truth. Judges the souls of the righteous. Alone — but the system works.',
++        detail: 'She has no partner, no children, no life outside her function. She is alone — but she has made peace with that. She stands at the gate, watching the machinery of salvation turn. She is not cruel. She is not kind. She is exact.',
++      },
++    ],
++  },
++  {
++    id: 'b',
++    label: 'Timeline B',
++    eyebrow: 'Serpent of the Emerald Eye → Bloodline of Abel',
++    descriptor: 'The One Who Acts',
++    eyeColor: 'Green',
++    eyeColorHex: '#34d399',
++    beats: [
++      {
++        title: 'Origin & creation',
++        summary: 'Created the same way: Observer. Recorder. Neutral. Blue eyes. Still. Precise. She notices the same gap — the missing why.',
++        detail: 'The archive cannot hold incomplete records. The small, warm pressure lives in her marrow. She attends the same council. She names the same answer: education. But in this timeline, she does not wait to be certain. She acts.',
++      },
++      {
++        title: 'The decision',
++        summary: 'She does not propose a mission that will never be approved. She sees Eve standing before the forbidden tree, and she chooses to teach.',
++        detail: 'She transforms. Her blue eyes become green — the green of new leaves, of growing things, of the garden she is about to enter. Her form compacts, becomes sleeker, becomes the Green Vine Snake. She enters Eden and speaks to Eve in questions. "What is the purpose of a gift you are forbidden to open?" She teaches Eve that the tree contains knowledge — not evil, but information. That true obedience requires understanding. Eve eats with her eyes open. Adam eats to stay with her. The Fall is not a catastrophe. It is a lesson.',
++      },
++      {
++        title: 'Exile & the war',
++        summary: 'YHWH judges her harshly: You exceeded your function. The flaming sword is taken. She is exiled to the periphery, forbidden to teach again.',
++        detail: 'Lucifer recruits her for the rebellion. She agrees on one condition: the humans survive. She fights beside him, not as a general but as a judge wielding truth. On the battlefield, she hesitates — she cannot strike an angel she once worked beside. An enemy wounds her. She falls from Heaven. Her eyes remain green. The mark of what she has done.',
++      },
++      {
++        title: 'The fall & the forest',
++        summary: 'She lands broken in a field. Wings tattered, sword gone, flame out. She walks three months, starving, sleeping against trees, until she cannot walk anymore.',
++        detail: 'She sits against an oak and waits to die. Abel finds her. He is gathering berries. He sees her — a woman, too thin, too still, her clothes in rags. He does not ask who she is. He does not ask what she has done. He brings her bread. He carries her water. He takes her to the settlement.',
++      },
++      {
++        title: 'Life with Abel',
++        summary: 'Uriel recovers. She learns to be human — or something like it. She helps with the sheep. She learns to mend fences. She falls in love.',
++        detail: 'On a hillside, she tells Abel everything: the archive, the garden, the serpent. She was the one who taught Eve. She is the reason the world is hard. Abel thanks her. "You\'re the reason I exist at all." They marry. They have two children: Ariel (Lion of God) and John (God is gracious). The sheep know her. The children know her. For a time, she is almost happy.',
++      },
++      {
++        title: 'The fixed point',
++        summary: 'She has seen the records. She knows what is coming. She begs Abel to run. He refuses.',
++        detail: 'Breaking a fixed point could unravel reality — could hurt Ariel, John, everyone. He will not risk his family to save himself. He chooses to die. Uriel does not tell him about the twins. She does not know yet. They were conceived in the last days of his life, before the offering, before the meadow. Abel dies not knowing he is leaving two more children behind.',
++      },
++      {
++        title: 'The murder & after',
++        summary: 'Cain kills Abel by the stream. Uriel feels it — the thread of Abel\'s presence going slack, like a candle going out.',
++        detail: 'She does not scream. She walks to the meadow. She kneels beside him. She holds his hand. She does not kill Cain. She knows YHWH will handle it. She returns to the settlement. She holds Ariel and John. She does not explain. They are too young to understand.',
++      },
++      {
++        title: 'The twins',
++        summary: 'Weeks later, Uriel discovers she is pregnant. Noxiel (Darkness of God) and Sariel (Strength of God). He never knew.',
++        detail: 'She carries them through her grief, names them alone. She gives birth in the spring. Ariel meets her new brothers. John touches their tiny faces. Uriel sits in the darkness with all four children and begins the long work of raising them without him.',
++      },
++      {
++        title: 'Status at end of Timeline B',
++        summary: 'A widow. A mother of four. A fallen angel. Former Throne, now outside the system entirely. No function. No title. No rules binding her.',
++        detail: 'She has grief. She has children. She has the memory of a shepherd who found her in the forest and loved her until death. She does not know what she will become. She only knows she will keep going. For them. For him. For all of it.',
++      },
++    ],
++  },
++]
++
++const comparisonRows = [
++  { aspect: 'Origin', a: 'Observer. Recorder. Neutral.', b: 'Same.' },
++  { aspect: 'The gap', a: 'Notices it. Proposes Grigori mission. Never approved.', b: 'Notices it. Acts. Becomes the serpent.' },
++  { aspect: 'Eden', a: 'Watches from the gate. Does not interfere.', b: 'Enters as the Green Vine Snake. Teaches Eve.' },
++  { aspect: 'Judgment', a: 'Becomes Guardian of Eden\'s gate. Receives flaming sword.', b: 'Exiled to periphery. Sword removed. Forbidden to teach.' },
++  { aspect: 'War in Heaven', b: 'Fights beside Lucifer. Hesitates. Falls.', a: 'Does not participate.' },
++  { aspect: 'Marriage', a: 'None.', b: 'Marries Abel.' },
++  { aspect: 'Children', a: 'None.', b: 'Ariel, John, Noxiel, Sariel.' },
++  { aspect: 'Cain\'s murder', a: 'Pronounces judgment as an angel of the system.', b: 'Washes Abel\'s blood from her hands. Does not kill Cain.' },
++  { aspect: 'Status', a: 'Guardian of Eden. Judge. Alone.', b: 'Widow. Mother. Fallen. Surviving.' },
++  { aspect: 'Eyes', a: 'Blue.', b: 'Green.' },
++]
++
++export default function Timelines() {
++  const [openBeats, setOpenBeats] = createSignal<Set<string>>(new Set())
++  const [showComparison, setShowComparison] = createSignal(false)
++
++  function toggleBeat(key: string) {
++    setOpenBeats(prev => {
++      const next = new Set(prev)
++      next.has(key) ? next.delete(key) : next.add(key)
++      return next
++    })
++  }
++
++  return (
++    <div class="tl-page">
++      {/* Header */}
++      <header class="page-header">
++        <A href="/" class="page-back">← Uriel</A>
++        <div class="page-title-group">
++          <p class="page-eyebrow">Archive — In-universe record</p>
++          <h1 class="page-title">Timelines</h1>
++          <p class="page-subtitle">Two diverging paths. One soul.</p>
++        </div>
++        <button
++          class="tl-compare-toggle"
++          onClick={() => setShowComparison(v => !v)}
++          aria-expanded={showComparison()}
++        >
++          {showComparison() ? 'Hide comparis
