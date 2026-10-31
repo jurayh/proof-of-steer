@@ -1,0 +1,142 @@
+{
+ "session_id": "cap-session",
+ "transcript_path": "/tmp/check-fixture-gen/demo-session.jsonl",
+ "harness": "claude-code",
+ "base_commit": "2f542850b8a677c023eca3ab826cfe698808b33e",
+ "updated_at": "2026-10-31T02:22:08Z",
+ "attached": [
+  {
+   "commit": "2f542850b8a677c023eca3ab826cfe698808b33e",
+   "turns": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "attached_at": "2026-10-31T02:22:08Z"
+  }
+ ],
+ "segments": [
+  {
+   "turn": 0,
+   "impact_class": "continuation",
+   "redirect": false,
+   "overlap_earlier_lines": 0,
+   "decisions": [],
+   "hunks": [
+    {
+     "file": "home/demo/reading-list/reading_list.py",
+     "start": 1,
+     "lines": 17,
+     "removed_start": 0,
+     "removed_lines": 0
+    }
+   ],
+   "hunks_basis": "session replay snapshots (provisional)",
+   "transcript_sha256": "204349aac6eb57b7a09a7be8a38bbcf211a5a1ce8cfb48bcd64a28a7e2d23903"
+  },
+  {
+   "turn": 1,
+   "impact_class": "procedural",
+   "redirect": false,
+   "overlap_earlier_lines": 0,
+   "decisions": [],
+   "hunks": [],
+   "hunks_basis": "session replay snapshots (provisional)",
+   "transcript_sha256": "ff8bdeaac27e8df485db4243ebe8d6f42d5273459124194ece48fb05d8a1bb59"
+  },
+  {
+   "turn": 2,
+   "impact_class": "continuation",
+   "redirect": true,
+   "overlap_earlier_lines": 0,
+   "decisions": [],
+   "hunks": [
+    {
+     "file": "home/demo/reading-list/test_reading_list.py",
+     "start": 1,
+     "lines": 11,
+     "removed_start": 0,
+     "removed_lines": 0
+    }
+   ],
+   "hunks_basis": "session replay snapshots (provisional)",
+   "transcript_sha256": "b6197277a078071e06ceb512aff729302c03d883b009c8304b8edd56fc0cb10c"
+  },
+  {
+   "turn": 3,
+   "impact_class": "reshaping",
+   "redirect": false,
+   "overlap_earlier_lines": 4,
+   "decisions": [],
+   "hunks": [
+    {
+     "file": "home/demo/reading-list/reading_list.py",
+     "start": 8,
+     "lines": 2,
+     "removed_start": 8,
+     "removed_lines": 2
+    }
+   ],
+   "hunks_basis": "session replay snapshots (provisional)",
+   "transcript_sha256": "3c097cb909de9a6e475c749ed7ea6ee348173c0f5e46d0b56933cf91719d5022"
+  },
+  {
+   "turn": 4,
+   "impact_class": "continuation",
+   "redirect": false,
+   "overlap_earlier_lines": 0,
+   "decisions": [],
+   "hunks": [
+    {
+     "file": "home/demo/reading-list/reading_list.py",
+     "start": 8,
+     "lines": 1,
+     "removed_start": 7,
+     "removed_lines": 0
+    }
+   ],
+   "hunks_basis": "session replay snapshots (provisional)",
+   "transcript_sha256": "ffedbc5cc8c620ae717cc702a9c50b571fdac18932da093d15542ec252980549"
+  },
+  {
+   "turn": 5,
+   "impact_class": "reshaping",
+   "redirect": false,
+   "overlap_earlier_lines": 3,
+   "decisions": [],
+   "hunks": [
+    {
+     "file": "home/demo/reading-list/reading_list.py",
+     "start": 7,
+     "lines": 0,
+     "removed_start": 8,
+     "removed_lines": 1
+    }
+   ],
+   "hunks_basis": "session replay snapshots (provisional)",
+   "transcript_sha256": "e35e5bc66cbd45025d22a9dc41cfe204843beeb5579bec7092b86188464a9e8b"
+  },
+  {
+   "turn": 6,
+   "impact_class": "reshaping",
+   "redirect": false,
+   "overlap_earlier_lines": 2,
+   "decisions": [],
+   "hunks": [
+    {
+     "file": "home/demo/reading-list/reading_list.py",
+     "start": 6,
+     "lines": 1,
+     "removed_start": 6,
+     "removed_lines": 1
+    }
+   ],
+   "hunks_basis": "session replay snapshots (provisional)",
+   "transcript_sha256": "992152e3aa0fc3c6597f2f0aa768697e45d11f772364768ae27b5a155369ed69"
+  }
+ ]
+}
