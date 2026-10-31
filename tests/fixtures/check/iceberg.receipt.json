@@ -1,0 +1,711 @@
+{
+ "schema": "proof-of-steering/receipt@1.0",
+ "label": "iceberg",
+ "kind": "code",
+ "harness": "claude-code",
+ "validation_scope": "Validated on trace-commons (28 sessions, full transcript-to-git join, blame agreement ~100%) and local repositories; at-scale validation on SWE-chat (SALT-NLP, 17,968 sessions) completed Oct 2026 with a partial pass: bimodality reproduced approximately (agent-all mode 40.9% vs published 41%), pushback reproduced on the dominant agent (49.2% vs ~50% for Claude Code excluding first turns; pooled 39.6-40.7% and agent-mix-sensitive), survival not reproduced (metric-v2 aggregate 53.4% vs published 59%; per-agent survival 25-97%, so survival stays a context field, stratified by agent where known). post_first_prompt_share is validated as a steering-presence detector (SWE-chat medians: 0.0 one-prompt, 0.75 continued no-pushback, 0.97 pushback sessions), not a steering-dose measure; at SWE-chat scale it was computed as the gross-added-lines analogue of this field's final-lines definition (see swe-chat/VALIDATION.md section 6). Document mode ground-truth-tested on CoAuthor (1,447 human-GPT-3 writing sessions, CHI 2022): per-part 'unchanged from first version' labels validated (sentence-level agreement 88.3%, false-untouched rate ~0.05%); the doc headline % unchanged is a floor on the untouched share, not a dose estimate (mean absolute error 13.0 pp against keystroke truth, sensitive to revision granularity). Document receipts contain no rejection evidence: material rejected or dismissed before it ever entered a revision is invisible to doc mode, so doc-mode steering evidence is a lower bound on interaction (see coauthor/VALIDATION-coauthor.md). Impact classification (v1.4, from the Oct 2026 impact spike): segments are also classified by measured effect on the artifact (procedural, continuation, reshaping, unmeasured) from line provenance alone. Reshaping share separated steered sessions from near-one-prompt controls at AUC 0.929, against 0.602 for the keyword correction segment share and 0.616 for the keyword line share; every control session measured exactly 0 reshaping segments. In interactive Claude Code sessions 52.8% of human turns are procedural (no file effect), so raw turn counts overstate steering roughly twofold. Scope caveat: reshaping detects inter-segment rework, and reads as human steering only when the segments are genuine human turns; in the headless Codex batch the follow-up prompts were a pre-written escalation ladder fired on schedule, and reshaping there (median share 66.7%) measures the scripted schedule and agent self-repair, not a human steering.",
+ "mark": {
+  "category": "Closely steered",
+  "basis": "40 human turns; 28 of them reshaped earlier work (70.0% of turns, 1622 earlier lines rewritten)"
+ },
+ "transcript_sha256": "905ddb1d8d7f6ada5898a5085d0a190fbcb491bb66600c1561f64ad26164ce47",
+ "mechanistic": {
+  "human_turns": 40,
+  "injected_user_records_filtered": 0,
+  "correction_keyword_prompts": 12,
+  "prompts_after_error": 6,
+  "rubber_stamp_prompts": 0,
+  "tokens_in_deduped": 563,
+  "tokens_out_deduped": 102921,
+  "active_minutes_gapcap300": 111.3,
+  "wall_minutes": 121.2,
+  "verification_lanes": {
+   "test_like_shell": 0,
+   "shell_total": 38,
+   "browser_lane_actions": 0
+  },
+  "edit_write_ops": 114,
+  "coverage": {
+   "repo_supplied": false,
+   "seed_source": null,
+   "writes": 32,
+   "edits_total": 82,
+   "edits_applied_on_transcript_base": 77,
+   "edits_applied_on_repo_seeded_base": 0,
+   "edits_unapplied_no_base": 5,
+   "edits_unapplied_no_match": 0,
+   "files_seeded_from_repo": 0,
+   "ops_present_in_transcript": 114,
+   "ops_collected": 114
+  }
+ },
+ "git_join": {
+  "method": "reconstructed local git repo, one commit per human-turn segment (plus a pre-existing commit when --repo seeding occurred); git blame on HEAD cross-checked vs in-memory line provenance",
+  "reconstructed_repo_local_path": "/tmp/check-fixture-gen/recon-iceberg",
+  "files_at_head": 28,
+  "final_nonblank_lines": 3102,
+  "git_ai_style_line_authorship": "agent-typed vs pre-existing split is reported via per_segment origin -1; authorship alone carries no triage signal (spike finding)",
+  "first_artifact_segment": 0,
+  "headline_fields": {
+   "post_first_prompt_share_pct": 87.2,
+   "preexisting_share_pct": 0.0
+  },
+  "context_fields": {
+   "first_segment_lines": 507,
+   "first_segment_lines_surviving_to_head": 403,
+   "first_segment_survival_pct": 79.5,
+   "share_of_head_already_present_after_first_segment_pct": 13.0
+  },
+  "supporting_fields": {
+   "correction_segment_share_pct": 29.5
+  },
+  "impact": {
+   "method": "effect-based segment classification from line provenance (impact spike, Oct 2026): a segment is reshaping when an applied op edited or deleted lines an earlier segment introduced; prompt text is never read",
+   "procedural_turns": 9,
+   "continuation_turns": 3,
+   "reshaping_turns": 28,
+   "unmeasured_segments": 0,
+   "reshaping_share_pct": 70.0,
+   "reshaping_lines": 1622,
+   "redirect_segments": 11,
+   "scope": "Impact classes measure inter-segment rework. The segments of this receipt are the human's own typed inputs in an interactive Claude Code session, so reshaping reads as human steering: a later input changed what an earlier input produced."
+  },
+  "blame_vs_memory_provenance_agreement_pct": 99.9,
+  "per_segment": [
+   {
+    "segment": 0,
+    "prompt_chars": 16,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 3,
+    "lines_introduced_gross": 507,
+    "lines_surviving_to_head": 398,
+    "impact_class": "continuation",
+    "redirect": false,
+    "overlap_earlier_lines": 0
+   },
+   {
+    "segment": 1,
+    "prompt_chars": 6630,
+    "correction_keyword": true,
+    "after_error": true,
+    "rubber_stamp": false,
+    "edit_write_ops": 4,
+    "lines_introduced_gross": 189,
+    "lines_surviving_to_head": 189,
+    "impact_class": "continuation",
+    "redirect": true,
+    "overlap_earlier_lines": 0
+   },
+   {
+    "segment": 2,
+    "prompt_chars": 42,
+    "correction_keyword": false,
+    "after_error": true,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
+   },
+   {
+    "segment": 3,
+    "prompt_chars": 47,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 7,
+    "lines_introduced_gross": 430,
+    "lines_surviving_to_head": 59,
+    "impact_class": "reshaping",
+    "redirect": true,
+    "overlap_earlier_lines": 109
+   },
+   {
+    "segment": 4,
+    "prompt_chars": 41,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
+   },
+   {
+    "segment": 5,
+    "prompt_chars": 392,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 300,
+    "lines_surviving_to_head": 82,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 340
+   },
+   {
+    "segment": 6,
+    "prompt_chars": 48,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 11,
+    "lines_surviving_to_head": 2,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 16
+   },
+   {
+    "segment": 7,
+    "prompt_chars": 494,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 5,
+    "lines_introduced_gross": 36,
+    "lines_surviving_to_head": 27,
+    "impact_class": "reshaping",
+    "redirect": true,
+    "overlap_earlier_lines": 32
+   },
+   {
+    "segment": 8,
+    "prompt_chars": 9801,
+    "correction_keyword": true,
+    "after_error": true,
+    "rubber_stamp": false,
+    "edit_write_ops": 5,
+    "lines_introduced_gross": 505,
+    "lines_surviving_to_head": 282,
+    "impact_class": "reshaping",
+    "redirect": true,
+    "overlap_earlier_lines": 18
+   },
+   {
+    "segment": 9,
+    "prompt_chars": 52,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 1,
+    "lines_surviving_to_head": 0,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 13
+   },
+   {
+    "segment": 10,
+    "prompt_chars": 53,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
+   },
+   {
+    "segment": 11,
+    "prompt_chars": 126,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 9,
+    "lines_surviving_to_head": 9,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 3
+   },
+   {
+    "segment": 12,
+    "prompt_chars": 17193,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 5,
+    "lines_introduced_gross": 569,
+    "lines_surviving_to_head": 302,
+    "impact_class": "reshaping",
+    "redirect": true,
+    "overlap_earlier_lines": 36
+   },
+   {
+    "segment": 13,
+    "prompt_chars": 180,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 12,
+    "lines_introduced_gross": 706,
+    "lines_surviving_to_head": 689,
+    "impact_class": "reshaping",
+    "redirect": true,
+    "overlap_earlier_lines": 733
+   },
+   {
+    "segment": 14,
+    "prompt_chars": 37,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 1,
+    "lines_introduced_gross": 4,
+    "lines_surviving_to_head": 2,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 11
+   },
+   {
+    "segment": 15,
+    "prompt_chars": 18,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 4,
+    "lines_introduced_gross": 10,
+    "lines_surviving_to_head": 10,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 34
+   },
+   {
+    "segment": 16,
+    "prompt_chars": 56,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 1,
+    "lines_introduced_gross": 2,
+    "lines_surviving_to_head": 2,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 7
+   },
+   {
+    "segment": 17,
+    "prompt_chars": 38,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 10,
+    "lines_surviving_to_head": 10,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 17
+   },
+   {
+    "segment": 18,
+    "prompt_chars": 17,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
+   },
+   {
+    "segment": 19,
+    "prompt_chars": 145,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 5,
+    "lines_introduced_gross": 240,
+    "lines_surviving_to_head": 232,
+    "impact_class": "reshaping",
+    "redirect": true,
+    "overlap_earlier_lines": 6
+   },
+   {
+    "segment": 20,
+    "prompt_chars": 36,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 1,
+    "lines_introduced_gross": 1,
+    "lines_surviving_to_head": 0,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 2
+   },
+   {
+    "segment": 21,
+    "prompt_chars": 26,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
+   },
+   {
+    "segment": 22,
+    "prompt_chars": 1093,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 28,
+    "lines_surviving_to_head": 26,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 10
+   },
+   {
+    "segment": 23,
+    "prompt_chars": 800,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 1,
+    "lines_introduced_gross": 16,
+    "lines_surviving_to_head": 15,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 19
+   },
+   {
+    "segment": 24,
+    "prompt_chars": 544,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 6,
+    "lines_introduced_gross": 425,
+    "lines_surviving_to_head": 422,
+    "impact_class": "reshaping",
+    "redirect": true,
+    "overlap_earlier_lines": 13
+   },
+   {
+    "segment": 25,
+    "prompt_chars": 65,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 1,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 5
+   },
+   {
+    "segment": 26,
+    "prompt_chars": 35,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
+   },
+   {
+    "segment": 27,
+    "prompt_chars": 59,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 10,
+    "lines_introduced_gross": 167,
+    "lines_surviving_to_head": 167,
+    "impact_class": "reshaping",
+    "redirect": true,
+    "overlap_earlier_lines": 9
+   },
+   {
+    "segment": 28,
+    "prompt_chars": 58,
+    "correction_keyword": false,
+    "after_error": true,
+    "rubber_stamp": false,
+    "edit_write_ops": 3,
+    "lines_introduced_gross": 6,
+    "lines_surviving_to_head": 6,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 24
+   },
+   {
+    "segment": 29,
+    "prompt_chars": 18123,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
+   },
+   {
+    "segment": 30,
+    "prompt_chars": 96,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 11,
+    "lines_introduced_gross": 32,
+    "lines_surviving_to_head": 29,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 98
+   },
+   {
+    "segment": 31,
+    "prompt_chars": 86,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 3,
+    "lines_introduced_gross": 6,
+    "lines_surviving_to_head": 1,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 22
+   },
+   {
+    "segment": 32,
+    "prompt_chars": 54,
+    "correction_keyword": true,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 3,
+    "lines_introduced_gross": 5,
+    "lines_surviving_to_head": 0,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 18
+   },
+   {
+    "segment": 33,
+    "prompt_chars": 47,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 3,
+    "lines_introduced_gross": 6,
+    "lines_surviving_to_head": 4,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 18
+   },
+   {
+    "segment": 34,
+    "prompt_chars": 58,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 2,
+    "lines_surviving_to_head": 2,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 4
+   },
+   {
+    "segment": 35,
+    "prompt_chars": 88,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
+   },
+   {
+    "segment": 36,
+    "prompt_chars": 47,
+    "correction_keyword": false,
+    "after_error": true,
+    "rubber_stamp": false,
+    "edit_write_ops": 0,
+    "lines_introduced_gross": 0,
+    "lines_surviving_to_head": 0,
+    "impact_class": "procedural",
+    "redirect": false,
+    "overlap_earlier_lines": 0
+   },
+   {
+    "segment": 37,
+    "prompt_chars": 39,
+    "correction_keyword": false,
+    "after_error": true,
+    "rubber_stamp": false,
+    "edit_write_ops": 1,
+    "lines_introduced_gross": 2,
+    "lines_surviving_to_head": 2,
+    "impact_class": "reshaping",
+    "redirect": false,
+    "overlap_earlier_lines": 4
+   },
+   {
+    "segment": 38,
+    "prompt_chars": 63,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 3,
+    "lines_introduced_gross": 53,
+    "lines_surviving_to_head": 53,
+    "impact_class": "reshaping",
+    "redirect": true,
+    "overlap_earlier_lines": 1
+   },
+   {
+    "segment": 39,
+    "prompt_chars": 43,
+    "correction_keyword": false,
+    "after_error": false,
+    "rubber_stamp": false,
+    "edit_write_ops": 2,
+    "lines_introduced_gross": 80,
+    "lines_surviving_to_head": 80,
+    "impact_class": "continuation",
+    "redirect": true,
+    "overlap_earlier_lines": 0
+   }
+  ],
+  "per_file": [
+   {
+    "file": "IceBerg/style.css",
+    "final_lines": 380,
+    "first_segment_share_pct": 100.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/pages/Connections.tsx",
+    "final_lines": 273,
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/connections.css",
+    "final_lines": 251,
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/home.css",
+    "final_lines": 234,
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/pages/Worldbuilding.tsx",
+    "final_lines": 252,
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/pages/Timelines.tsx",
+    "final_lines": 223,
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/timelines.css",
+    "final_lines": 200,
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/app/routes/home.tsx",
+    "final_lines": 189,
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/worldbuilding.css",
+    "final_lines": 156,
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
+    "file": "projects/d--IceBerg/memory/project_uriel_canon.md",
+    "final_lines": 126,
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/books.css",
+    "final_lines": 139,
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/index.css",
+    "final_lines": 106,
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/pages/Books.tsx",
+    "final_lines": 99,
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/src/audience.css",
+    "final_lines": 94,
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
+   },
+   {
+    "file": "IceBerg/README.MD",
+    "final_lines": 76,
+    "first_segment_share_pct": 0.0,
+    "preexisting_share_pct": 0.0
+   }
+  ]
+ },
+ "decisions": {
+  "method": "AskUserQuestion tool calls paired with their tool results and each answered question classified by its chosen answer (decision-points spike, Oct 2026): followed_recommendation when the answer equals the option marked (Recommended), diverged_to_listed when it equals a different listed option (on unmarked questions, any listed pick), free_text_answers when it matches no listed label; question text is never stored, counts and categories only",
+  "decision_points": 5,
+  "decisions_with_recommendation": 0,
+  "followed_recommendation": 0,
+  "diverged_to_listed": 5,
+  "free_text_answers": 0,
+  "rejected_decision_calls": 0,
+  "coverage": {
+   "errored_decision_calls": 0,
+   "dismissed_decision_calls": 0,
+   "input_unparseable_decision_calls": 0,
+   "unparseable_answers": 0
+  },
+  "scope": "Decision fields count the structured questions the agent asked and the user answered. Followed and diverged are defined only where the agent marked a recommended option, and decisions_with_recommendation is their denominator: agents mark inconsistently (4% of questions in one validated corpus, 40% in another). A listed pick on an unmarked question counts as diverged_to_listed and means only that the user chose among the offered options. Free-text answers mean the user left the offered options entirely. Sessions where the agent never asks have zero decision points, which says nothing about steering through ordinary turns."
+ },
+ "labels": {
+  "semantic_weights": "none \u2014 rule-based categories only; no model calls",
+  "receipt_nature": "descriptive evidence, not a certified grade",
+  "mark_semantics": "the mark names the process shape (how the work was steered), never its quality; it is not a grade",
+  "field_status": "headline_fields validated in spike; context_fields demoted (survival saturates on greenfield corpora); supporting_fields noisy, read jointly with turn count"
+ }
+}
