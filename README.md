@@ -34,6 +34,15 @@ Any receipt can be drawn this way:
 python3 steering_viz.py my-session.receipt.json -o steerprint.html
 ```
 
+Two more figures come from the sessions themselves. The counterfactual shadow shows the shipped artifact with only the lines that survive from the first prompt lit up, so a reader sees at a glance how much of the artifact the first prompt actually built. The artifact replay is a time-lapse of the artifact being built turn by turn, with play, pause, scrub, and speed controls. Both are self-contained pages with no external assets:
+
+```bash
+python3 steering_viz.py --shadow steered.jsonl control.jsonl -o shadow.html
+python3 steering_viz.py --replay session.jsonl -o replay.html
+```
+
+See `examples/counterfactual-shadow.html` and `examples/artifact-replay.html` for filled samples, and the demos page on the site for all the figures in one place.
+
 ## Quickstart
 
 Requirements: Python 3.8 or later (standard library only) and git on PATH. Nothing is uploaded anywhere.
