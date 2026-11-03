@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>proof-of-steer: Demos.</title>
+<meta name="description" content="The proof-of-steer figures in one place: the Steerprint, the counterfactual shadow, the artifact replay, the findings, and a filled disclosure sample.">
+<style>
+:root{
+  --ink:#17222e; --muted:#5c6b7a; --line:#dde4ea; --card:#ffffff;
+  --first:#46689e; --follow:#2f8f83; --corr:#e07a3f; --err:#c94f5e;
+  --bg:#f6f8fa; --soft:#eef2f5; --warmbg:#fdeee1; --warmink:#a34d12;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  line-height:1.6;font-size:16.5px}
+.wrap{max-width:960px;margin:0 auto;padding:0 22px}
+header{padding:64px 0 30px;text-align:left}
+h1{font-size:44px;line-height:1.12;margin:0 0 6px;letter-spacing:-.01em}
+.tagline{font-size:21px;font-weight:650;margin:0 0 14px}
+.tagline .bond{color:var(--first)}
+.lede{font-size:18.5px;color:var(--muted);max-width:640px;margin:0 0 26px}
+.btns{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:38px}
+.btn{display:inline-block;padding:11px 20px;border-radius:9px;text-decoration:none;
+  font-weight:600;font-size:15.5px;border:1px solid var(--line)}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.ghost{background:var(--card);color:var(--ink)}
+section{padding:34px 0}
+section + section{border-top:1px solid var(--line)}
+h2{font-size:27px;line-height:1.25;margin:0 0 12px;letter-spacing:-.01em}
+h3{font-size:18px;margin:22px 0 8px}
+p{margin:0 0 14px;max-width:700px}
+.muted{color:var(--muted)}
+.big{font-size:20px;line-height:1.5;max-width:720px}
+figure{margin:22px 0;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:22px}
+figure svg{display:block;width:100%;height:auto}
+figure img{display:block;width:100%;height:auto}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
+.mode{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px}
+.mode h3{margin-top:0}
+.mode .num{font-size:30px;font-weight:700;line-height:1.2}
+.mode .num small{font-size:14px;font-weight:600;color:var(--muted)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:20px 0}
+.step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+.step .n{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--first);font-weight:700}
+.step p{font-size:15px;margin:6px 0 0}
+pre{background:var(--ink);color:#e8eef4;border-radius:10px;padding:16px 18px;
+  overflow-x:auto;font-size:13.8px;line-height:1.65;margin:12px 0 20px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+p code, li code{background:var(--soft);border-radius:5px;padding:1px 6px;font-size:.92em}
+table{width:100%;border-collapse:collapse;background:var(--card);
+  border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:18px 0;font-size:15px}
+th,td{text-align:left;padding:12px 16px;vertical-align:top}
+th{background:var(--soft);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+tr + tr td{border-top:1px solid var(--line)}
+ul{max-width:700px;padding-left:22px}
+li{margin-bottom:9px}
+.badge{display:inline-block;background:var(--warmbg);color:var(--warmink);
+  border-radius:20px;padding:1px 10px;font-size:12.5px;font-weight:600}
+footer{padding:30px 0 46px;color:var(--muted);font-size:13.5px;border-top:1px solid var(--line)}
+footer a{color:var(--first)}
+a{color:var(--first)}
+@media (max-width:720px){
+  h1{font-size:34px}
+  .grid,.steps{grid-template-columns:1fr}
+  header{padding:44px 0 22px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Demos</h1>
+  <p class="tagline">See the steering, <span class="bond">not just the claim.</span></p>
+  <p class="lede">This page shows rather than describes the tool. Every figure below is drawn from real receipts, and every number on it matches the receipt it came from.</p>
+  <p><a href="index.html">Back to the main page</a></p>
+</header>
+
+<section>
+  <h2>The Steerprint</h2>
+  <p>The receipt drawn as a map. One block per human turn, sized by the lines that turn introduced, colored by kind, and hatched where those lines were later discarded. The steered session is a skyline of forty blocks. The one-prompt control is a single block.</p>
+  <p><a href="steerprint.html"><strong>Open the sample Steerprint</strong></a></p>
+</section>
+
+<section>
+  <h2>The counterfactual shadow</h2>
+  <p>The shipped artifact with only the lines that survive from the first prompt lit up. The lit part is what the first prompt built. Everything dark arrived in later turns.</p>
+  <p>In the steered session only 398 of 3,102 lines survive from the first prompt. In the one-prompt control the shadow equals the artifact, because nothing arrived after the first prompt. Line authorship calls both artifacts identical. The shadow shows they are not.</p>
+  <p><a href="counterfactual-shadow.html"><strong>Open the counterfactual shadow</strong></a></p>
+</section>
+
+<section>
+  <h2>The artifact replay</h2>
+  <p>A time-lapse of the artifact being built, turn by turn. Files appear as they are created. Strips fill as lines arrive, shift color as later turns reshape them, and fade as lines are discarded. Play it, pause it, scrub through it, and watch forty turns of steering build an app.</p>
+  <p>The replay has 41 frames, one for the empty artifact and one after each human turn, with play, pause, scrub, and speed controls. The final frame matches the receipt exactly at 3,102 lines across 28 files.</p>
+  <p><a href="artifact-replay.html"><strong>Open the artifact replay</strong></a></p>
+</section>
+
+<section>
+  <h2>What the sessions say</h2>
+  <p>The validated findings behind the figures, each with its corpus and source report. Procedural turns, the presence-not-dose headline, decision behavior, the under-claim measurement, and the doc-mode floor.</p>
+  <p><a href="findings.html"><strong>Read the findings</strong></a></p>
+</section>
+
+<section>
+  <h2>The disclosure, filled in</h2>
+  <p>A document receipt rendered as a short block for the top of the document, so a reader gets the steering picture without running anything. This sample is generated from the findings-draft receipt, and its numbers match that receipt exactly.</p>
+  <figure>
+  <h3>Steering disclosure</h3>
+  <p>This document was written with an AI agent, and its revision history carries a steering receipt. The receipt reports what observably happened across revisions: how much of the final text survives verbatim from the first version, which sections arrived later, and which sections were reshaped after they first appeared.</p>
+  <ul>
+    <li>Steering mark: Closely steered, 3 revisions</li>
+    <li>First version to final: at least 36.0% of the final text survives verbatim from the first version (38.3% of final sentences, the less granularity-sensitive measure)</li>
+    <li>Sections unchanged since the first version:
+      <ul>
+        <li>What was built and verified (executed, not assumed)</li>
+        <li>The one honest caveat that governs everything below</li>
+        <li>Instrument results (scripted models, seed 0, n=200/category)</li>
+        <li>Calibration findings (the useful phase-1 output)</li>
+        <li>Verdict against the kill criteria (phase 1)</li>
+      </ul>
+    </li>
+    <li>Sections that arrived in later revisions:
+      <ul>
+        <li>Rented-GPU cost estimate (checked 2026-10-17, secondary pricing pages) (revision 2)</li>
+        <li>Phase 2 (2026-10-17): GPU-free — real adapters, prompt arm, hardened gate (revision 3)</li>
+        <li>What actually ran (revision 3)</li>
+        <li>Real probe items (new in phase 2) (revision 3)</li>
+        <li>Prompt-personalization arm (the PERG-for-prompts result) (revision 3)</li>
+        <li>Real-adapter instrument validation (revision 3)</li>
+        <li>Two instrument bugs found and fixed (both would have faked results) (revision 3)</li>
+        <li>Battery hardening (gate v2) (revision 3)</li>
+        <li>Manifest as a standalone deliverable (revision 3)</li>
+        <li>Still stubbed, and why (revision 3)</li>
+        <li>Next, in order (phase 3, unchanged blockers) (revision 3)</li>
+      </ul>
+    </li>
+    <li>Sections reshaped after first appearing: 1 of 18 sections.</li>
+  </ul>
+  <p>Note: 2 sections gained lines in later revisions, but the mark counts 1 as reshaped. The mark's rule requires the section heading to survive unchanged, so a section whose heading changed between versions is not counted as reshaped even when it gained lines.</p>
+  <ul>
+    <li>History: complete, 3 revisions from git</li>
+    <li>Full section map: see the STEERING.md that travels with this receipt.</li>
+  </ul>
+  <p>Generated from the document receipt with <code>steerprint &lt;receipt.json&gt; --disclosure</code>. The receipt carries counts and categories only, never prompt text, and the revisions never leave your machine. Descriptive evidence, never a certified grade. Material rejected or dismissed before it ever entered a revision is invisible to this receipt, so what it shows is a lower bound on interaction.</p>
+  <p>Delete this section if no agent was involved.</p>
+  </figure>
+</section>
+
+<footer>
+  <p><a href="https://github.com/jurayh/proof-of-steer">proof-of-steer on GitHub</a> · MIT license · Steered, not slop.</p>
+</footer>
+
+</div>
+</body>
+</html>
