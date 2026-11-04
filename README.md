@@ -8,25 +8,23 @@ A local receipt that shows how much a human actually steered the AI that made th
 
 *One prompt on top, one block. Below it, a real steered session: forty human turns, drawn from its receipt.*
 
-## For maintainers and reviewers
+## The problem
 
-AI-produced pull requests and documents now arrive faster than anyone can read them, and from the outside a one-prompt artifact and a carefully steered one look exactly the same. proof-of-steer gives you a way to tell them apart before you spend your attention. Ask contributors to attach a steering receipt to their pull request, the way they attach test results. The receipt reports what observably happened while the artifact was made: how many genuine human turns there were, how much of the shipped artifact arrived only after the first prompt, which parts were reshaped in later revisions, and where the corrections landed. You price your review against evidence instead of a vibe, and careful contributors finally have a way to prove the care.
+AI-produced pull requests and documents arrive faster than anyone can read them, and from the outside a one-prompt artifact and a carefully steered one look exactly the same. proof-of-steer tells them apart before you spend your attention. Ask contributors to attach a steering receipt to their pull request, the way they attach test results. The receipt reports what observably happened while the artifact was made: how many genuine human turns there were, how much of the shipped artifact arrived only after the first prompt, which parts were reshaped later, and where the corrections landed. You price your review against evidence instead of a vibe, and careful contributors finally have a way to show the care.
 
-The wedge is influence, not authorship. Tools that label lines as human-typed or agent-typed cannot separate a one-prompt artifact from a heavily steered one, because in an agent session the agent types nearly everything either way. Steering is the signal that separates them, and steering is what this measures. A receipt is descriptive evidence, never a certified grade.
+The wedge is influence, not authorship. Tools that label lines human-typed or agent-typed cannot separate a one-prompt artifact from a heavily steered one, because in an agent session the agent types nearly everything either way. Steering is the signal that separates them, and steering is what this measures. A receipt is descriptive evidence, never a certified grade.
 
 ### Ask for the receipt in your template
 
-The habit forms where the pull request starts. [examples/pull-request-template.md](examples/pull-request-template.md) is a short section to paste into your project's pull request template: contributors who used an agent fill in their steering mark and attach the receipt, and everyone else deletes the section. This repo's own template carries the same section. Maintainers can verify the artifact-side claims of an attached receipt against the PR diff with `proof-of-steer check <receipt.json> <diff>`. It never sees the transcript. The steering mark and turn counts print as not checkable from a diff, because a diff carries no segment provenance.
-
-## For creators
+[examples/pull-request-template.md](examples/pull-request-template.md) is a short section to paste into your project's pull request template: contributors who used an agent fill in their steering mark and attach the receipt, and everyone else deletes the section. This repo's own template carries the same section. Maintainers can verify the artifact-side claims of an attached receipt against the PR diff with `proof-of-steer check <receipt.json> <diff>`. It never sees the transcript. The steering mark and turn counts print as not checkable from a diff, because a diff carries no segment provenance.
 
 If you steer your agent hard, correcting, rejecting, and reshaping until the work is yours, a receipt is how that work becomes visible. Attach it to the pull request, the document, or the delivery. The map form of the receipt is called a Steerprint, and it is made to be shared.
 
 ## See it first: the Steerprint
 
-Open [examples/collaboration-map.html](examples/collaboration-map.html) in a browser. It is one self-contained page with no external assets, drawn from the sample receipts in this repo. Its title is Steerprint, and proof-of-steer is the tool that generates it.
+Open [examples/collaboration-map.html](examples/collaboration-map.html) in a browser. It is one self-contained page with no external assets, drawn from the sample receipts in this repo.
 
-On the left, a steered coding session drawn as a 40-block timeline, one block per human turn, colored by kind (first prompt, follow-up, correction, after-error) and hatched where those lines were later discarded. On the right, a one-prompt control: a single block. Below, a research findings draft drawn as its sections, colored first-draft versus shaped-by-later-revisions: the phase one sections sit almost entirely untouched, one section arrived whole in revision 2, and the whole phase two was appended in revision 3.
+On the left, a steered session as a 40-block timeline, one block per human turn, colored by kind and hatched where those lines were later discarded. On the right, a one-prompt control: a single block. Below, a findings draft drawn as sections, colored first-draft versus shaped by later revisions.
 
 Any receipt can be drawn this way:
 
@@ -41,7 +39,7 @@ python3 steering_viz.py --shadow steered.jsonl control.jsonl -o shadow.html
 python3 steering_viz.py --replay session.jsonl -o replay.html
 ```
 
-See `examples/counterfactual-shadow.html` and `examples/artifact-replay.html` for filled samples, and the demos page on the site for all the figures in one place.
+See `examples/counterfactual-shadow.html` and `examples/artifact-replay.html` for filled samples, and [the demos page](https://jurayh.github.io/proof-of-steer/demos.html) for all the figures in one place.
 
 ## Quickstart
 
@@ -51,18 +49,12 @@ Run it without installing anything, if you have [uv](https://docs.astral.sh/uv/)
 
 ```bash
 uvx proof-of-steer code path/to/session.jsonl --label my-session
+# or: pipx install proof-of-steer
 ```
 
-Or install it:
+From a clone, use `python3 steering_receipt.py` in place of `proof-of-steer` and `python3 steering_viz.py` in place of `steerprint`. The two forms are the same tool.
 
-```bash
-pipx install proof-of-steer
-# or: pip install proof-of-steer
-```
-
-Or run it from a clone of this repo, where the commands below use `python3 steering_receipt.py` in place of `proof-of-steer`, and `python3 steering_viz.py` in place of `steerprint`. The two forms are the same tool.
-
-Try it on the bundled sample:
+Try the bundled sample:
 
 ```bash
 proof-of-steer demo
@@ -78,25 +70,13 @@ The demo runs the full pipeline on a small synthetic session that ships with the
 
 *The same session, building turn by turn. The one-prompt control never grows.*
 
-### Code mode: a coding agent session
+### Code mode
 
 ```bash
 python3 steering_receipt.py code path/to/session.jsonl --label my-session
 ```
 
-Claude Code transcripts and Codex rollouts are both supported. The format is detected automatically, or it can be forced with `--format codex` or `--format claude-code`.
-
-Add `--repo` to seed the starting content of files the session edited but never created, so more of its edits can be replayed:
-
-```bash
-python3 steering_receipt.py code path/to/session.jsonl --label my-session --repo path/to/repo
-```
-
-If the repo has moved on since the session ran, seed from the commit the session ran against instead of the working tree of today:
-
-```bash
-python3 steering_receipt.py code path/to/session.jsonl --label my-session --repo path/to/repo --repo-ref <commit>
-```
+Claude Code transcripts and Codex rollouts are both supported. The format is detected automatically, or forced with `--format codex` or `--format claude-code`. Add `--repo path/to/repo` to seed the starting content of files the session edited but never created, so more of its edits can be replayed. If the repo has moved on since the session ran, add `--repo-ref <commit>` to seed from the commit the session ran against instead of today's working tree.
 
 The transcript is replayed turn by turn into a reconstructed local git repo, one commit per human-turn segment, and `git blame` on the result cross-checks the line provenance the replay computed in memory. Output lands in `receipts-out/` as `my-session.receipt.json` plus a rendered `my-session.STEERING.md`.
 
@@ -105,7 +85,7 @@ What the samples in [examples/](examples/) show:
 - **Steered session** (`code-steered-860618e1`): 40 human turns, 12 of them correction prompts. **87.2%** of the shipped lines were introduced after the first prompt. Line authorship alone would call every line agent-typed and stop there.
 - **One-prompt control** (`code-oneprompt-4130c9a7`): 1 human turn. **0.0%** of the shipped lines arrived after the first prompt. Same authorship label as the steered session, completely different receipt.
 
-### Doc mode: a document in git
+### Doc mode
 
 ```bash
 python3 steering_receipt.py doc path/to/repo docs/plan.md --label plan
@@ -123,9 +103,9 @@ python3 steering_viz.py my-doc.receipt.json --disclosure -o disclosure.md
 
 The block groups sections (unchanged, arrived later, reshaped) and is generated from the receipt, so its numbers cannot drift from it. See `examples/document-disclosure.md` for the template and a filled sample.
 
-### Capture mode: steering records at commit time
+### Capture mode
 
-Everything above is reconstructed after the fact, by replaying a transcript and joining line provenance against git blame. Capture runs the other way: at commit time it writes a steering record as the commit's git note under `refs/notes/steer`, stating which segments of the session landed in that commit, what each segment measurably did (its impact class, its decision outcomes as classes only, the diff hunks it produced), and a hash of the transcript bytes those claims came from. Later receipts then separate **captured** segments from **inferred** ones and print the split on every receipt.
+Everything above is reconstructed after the fact. Capture runs the other way: at commit time it writes a steering record as the commit's git note under `refs/notes/steer`, stating which segments of the session landed in that commit, what each segment measurably did (its impact class, its decision outcomes as classes only, the diff hunks it produced), and a hash of the transcript bytes those claims came from. Later receipts separate **captured** segments from **inferred** ones and print the split on every receipt.
 
 One-time setup per repo:
 
@@ -133,7 +113,7 @@ One-time setup per repo:
 proof-of-steer capture init path/to/repo
 ```
 
-That writes the git config that lets the notes travel: a fetch refspec for `refs/notes/steer`, a push refspec pair that carries the notes alongside the branches (a lone notes push refspec would make `git push` drop the branches, so the pair is always written together), and the notes rewrite config that lets records follow amended and rebased commits where git supports it.
+That writes the git config that lets the notes travel: a fetch refspec, a push refspec pair that carries the notes alongside the branches (a lone notes push refspec would make `git push` drop the branches, so the pair is always written together), and the notes rewrite config that lets records follow amended and rebased commits where git supports it.
 
 From there the Claude Code plugin drives it: a PostToolUse hook accumulates provisional records during the session, and at SessionEnd the attach writes the record onto HEAD and pushes **only** `refs/notes/steer` to the repo's existing origin, announcing the push in its output. A push failure is reported, never fatal, and the init config remains as the fallback transport for your next normal push. To attach by hand at any commit:
 
@@ -173,11 +153,11 @@ python3 steering_viz.py my-session.receipt.json --badge -o badge.svg
 
 Plain-word version. The full field-by-field contract is [SCHEMA.md](SCHEMA.md) (schema id `proof-of-steering/receipt@1.0`).
 
-- **Steering mark**: one of four words at the top of every receipt: One-shot, Prompted, Steered, or Closely steered. The mark is computed from the presence-level fields only. For code it counts how many turns reshaped earlier work. For documents it looks at how the later revisions treated the first version. It names the shape of the process, and it is not a grade: it says nothing about how good the artifact is, and one-shot work can be exactly right.
+- **Steering mark**: one of four words at the top of every receipt: One-shot, Prompted, Steered, or Closely steered. It is computed from the presence-level fields only. For code it counts how many turns reshaped earlier work. For documents it looks at how the later revisions treated the first version. It names the shape of the process, and it is not a grade: it says nothing about how good the artifact is, and one-shot work can be exactly right.
 - **Human turns**: genuine human prompts, with injected system records filtered out. The basic unit of steering.
 - **Post-first-prompt share** (code): the share of shipped lines whose origin is a segment after the first artifact-producing one. 0% means the shipped artifact is the first prompt's output, untouched in origin. This is the headline field.
 - **Per-segment and per-file attribution** (code): which turns and which files the surviving lines came from, including how much came from correction and after-error segments.
-- **Decision points** (code): the structured questions the agent asked and the user answered, counted by what the user did with the choice: followed the option the agent marked recommended, picked a different listed option, answered in free text, or refused the question as posed. Code receipts carry a `decisions` block with these counts and their coverage.
+- **Decision points** (code): the structured questions the agent asked and the user answered, counted by what the user did with the choice: followed the option the agent marked recommended, picked a different listed option, answered in free text, or refused the question as posed.
 - **Capture** (code): when the session's repo carries steering records in its git notes, the receipt gains a `capture` block: how many segments were captured at commit time, how many are inferred after the fact, and how many are unmeasured, with the verification tier stated in the words above. Absence of records reads as zero captured, never as absence of steering.
 - **Coverage**: how much of the session the reconstruction could actually replay. A low-coverage receipt should be discounted by its reader, so the number is printed on every receipt.
 - **Unchanged share** (doc): at least this share of final lines survives verbatim from the first version. It is a floor, not a point estimate, and it is only interpretable next to the revision count printed with it. A sentence-level share is reported alongside for prose.
@@ -223,7 +203,7 @@ One honest break in the analogy, stated plainly. A public key is unforgeable and
 python3 -m unittest discover -s tests
 ```
 
-Seventy-four tests, standard library only, including fixtures that pin the seeding behavior, the sentence-share computation, the floor wording on rendered receipts, the Codex adapter, the provider registry and fixture histories, the impact classification, the steering mark boundaries, the hash-commitment round trip, the decision points, op collection outside the message-id dedupe with its completeness fields, and the capture flow: record round trips through a bare remote, tamper flags at both verification tiers, the notes-only partial receipt, and the amend behaviour.
+112 tests, standard library only, covering the seeding behavior, the sentence-share computation, the floor wording on rendered receipts, the Codex adapter, the provider registry and fixture histories, the impact classification, the steering mark boundaries, the hash-commitment round trip, the decision points, op collection outside the message-id dedupe with its completeness fields, and the capture flow: record round trips through a bare remote, tamper flags at both verification tiers, the notes-only partial receipt, and the amend behaviour. The disclosure, shadow, and replay renders are covered too.
 
 ## License
 
