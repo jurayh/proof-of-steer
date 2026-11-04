@@ -11,6 +11,7 @@ Usage:
   python3 steering_viz.py doc.receipt.json --disclosure -o disclosure.md
   python3 steering_viz.py --shadow steered.jsonl control.jsonl [--doc doc.receipt.json] -o shadow.html
   python3 steering_viz.py --replay session.jsonl [--receipt receipt.json] -o replay.html
+  python3 steering_viz.py --rework session.jsonl [--receipt receipt.json] -o rework-web-3d.html
 
 Visual model:
   - Code receipts render as a steering timeline (one block per human-turn
@@ -961,8 +962,464 @@ def replay_main(argv):
           f"{len(frames)} frames)")
 
 
+REWORK_CAPTION = (
+    "Each node is one human turn, in order along a line. An edge from "
+    "a later turn to an earlier turn means the later turn removed "
+    "lines the earlier turn introduced. Edge thickness grows with the "
+    "number of lines removed. Long arcs reach far back in time. Short "
+    "arcs join neighbouring turns. The same graph in 3D sits behind "
+    "the 3D spiral toggle. Edges count discards in the replay. They "
+    "are not a claim about what the author meant. The one-prompt "
+    "control has a single turn and therefore no rework to show.")
+
+REWORK_HEAVY_THRESHOLD = 50
+
+REWORK_METHOD = (
+    "The graph comes from the shipped prefix replays, the same "
+    "snapshots the artifact replay uses. For each turn, the lines of "
+    "each earlier turn present before the turn but absent after it "
+    "become one edge, weighted by the count. Counts cover non-blank "
+    "lines only, matching the receipt.")
+
+REWORK_KIND_LABELS = {
+    "first": "First prompt",
+    "followup": "Follow-up prompt",
+    "correction": "Correction prompt",
+    "after_error": "Prompt after an error",
+}
+
+REWORK_KIND_COLOURS = {
+    "first": "#46689e",
+    "followup": "#2f8f83",
+    "correction": "#e07a3f",
+    "after_error": "#c94f5e",
+}
+
+
+def _rework_kind(turn, seg):
+    if turn == 1:
+        return "first"
+    if seg.get("correction_keyword"):
+        return "correction"
+    if seg.get("after_error"):
+        return "after_error"
+    return "followup"
+
+
+def rework_graph(session_path):
+    """The rework graph of one session, derived only from the shipped
+    tool's own prefix replays, the same snapshots the artifact replay
+    uses. For each frame transition, lines of an earlier turn present
+    before the turn but absent after it become one directed edge from
+    the later turn to the earlier turn, weighted by the count. No new
+    provenance logic is introduced here. Node labels carry turn numbers
+    and kinds only, never prompt text. Returns a graph dict."""
+    import math
+    import steering_receipt as sr
+    fmt = sr.detect_format(session_path)
+    if fmt == "codex":
+        segments, meta = sr.parse_codex_session(session_path)
+    else:
+        segments, meta = sr.parse_session(session_path)
+    human = [s for s in segments if not s.get("pre_prompt")]
+    idx_to_turn = {s["idx"]: k + 1 for k, s in enumerate(human)}
+    first_human = next((i for i, s in enumerate(segments)
+                        if not s.get("pre_prompt")), len(segments))
+    cuts = [first_human]
+    cuts += [i + 1 for i, s in enumerate(segments)
+             if not s.get("pre_prompt")]
+    nodes = {}
+    edges = Counter()
+    prev = {}
+    for k, cut in enumerate(cuts):
+        files, _, introduced, _ = sr.apply_ops(segments[:cut], None)
+        cur = {}
+        for fp, lines in files.items():
+            c = Counter()
+            for ln, org in lines:
+                if ln.strip():
+                    c[(ln, org)] += 1
+            cur[fp] = c
+        if k > 0:
+            s = human[k - 1]
+            nodes[k] = {"turn": k, "segment": s["idx"],
+                        "kind": _rework_kind(k, s),
+                        "introduced": introduced.get(s["idx"], 0)}
+            for fp in set(prev) | set(cur):
+                old, new = prev.get(fp, Counter()), cur.get(fp, Counter())
+                for (ln, org), n in old.items():
+                    lost = n - new.get((ln, org), 0)
+                    if lost > 0 and org in idx_to_turn:
+                        edges[(k, idx_to_turn[org])] += lost
+        prev = cur
+    outgoing = Counter()
+    incoming = Counter()
+    for (later, earlier), w in edges.items():
+        outgoing[later] += w
+        incoming[earlier] += w
+    for t, node in nodes.items():
+        node["removed_from_earlier"] = outgoing[t]
+        node["removed_by_later"] = incoming[t]
+        node["surviving"] = node["introduced"] - incoming[t]
+    edge_list = [{"from": later, "to": earlier, "weight": w,
+                  "span": later - earlier}
+                 for (later, earlier), w in sorted(edges.items())]
+    layout = {}
+    for t in range(1, len(nodes) + 1):
+        ang = (t - 1) * 0.9
+        rad = 90 + 3.2 * t
+        layout[t] = {"x": rad * math.cos(ang),
+                     "y": (t - 1) * 14.0 - 7.0 * len(nodes),
+                     "z": rad * math.sin(ang)}
+    total_weight = sum(edges.values())
+    return {"nodes": [nodes[t] for t in sorted(nodes)],
+            "edges": edge_list, "layout": layout,
+            "turns": len(nodes), "edge_count": len(edge_list),
+            "total_weight": total_weight,
+            "final_lines": sum(n["surviving"] for n in nodes.values())}
+
+
+def rework_html(graph, meta):
+    """Build the rework web page. All graph data is embedded as
+    JSON. The page opens on a timeline arc diagram: turns in order
+    along a line, arcs above it back to the turn each later turn
+    rewrote. The 3D spiral of the same graph sits behind a toggle.
+    The page has no external assets, plays nothing on load, and is
+    driven by click for detail, with drag to orbit and scroll to zoom
+    in the spiral view only."""
+    title = meta.get("title", "Rework web")
+    subtitle = meta.get("subtitle", "")
+    data = json.dumps({"nodes": graph["nodes"], "edges": graph["edges"],
+                       "layout": {str(k): v for k, v in
+                                  graph["layout"].items()},
+                       "kinds": REWORK_KIND_LABELS,
+                       "colours": REWORK_KIND_COLOURS})
+    data = data.replace("<", "\\u003c")
+    if graph["edges"]:
+        heavy = max(graph["edges"], key=lambda e: e["weight"])
+        reworker = max(graph["nodes"],
+                       key=lambda n: n["removed_from_earlier"])
+        callouts = (f"Look first at turn {heavy['from']}, which removed "
+                    f"{heavy['weight']:,} lines from turn {heavy['to']}, "
+                    "the single biggest rewrite. "
+                    f"Turn {reworker['turn']} removed "
+                    f"{reworker['removed_from_earlier']:,} lines from "
+                    "earlier turns, more than any other turn.")
+    else:
+        callouts = "A single turn has no rework to show."
+    css = """
+body{font-family:system-ui,-apple-system,sans-serif;color:#17222e;background:#f6f8fa;margin:0;padding:24px}
+main{max-width:1000px;margin:0 auto;background:#fff;border:1px solid #dde4ea;border-radius:8px;padding:24px}
+h1{font-size:22px;margin:0 0 4px} .sub{color:#5c6b7a;margin:0 0 16px}
+.howto{font-size:15px;margin:0 0 12px}
+.hint{font-size:14px;color:#5c6b7a;margin:0 0 12px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 12px}
+button{font-size:14px;padding:6px 14px;cursor:pointer}
+.viewbtn{background:#fff;color:#17222e;border:1px solid #dde4ea;border-radius:6px}
+.viewbtn.active{background:#17222e;color:#fff;border-color:#17222e}
+.heavy{font-size:14px}
+.stage{display:flex;gap:20px;flex-wrap:wrap}
+canvas{background:#fbfcfe;border:1px solid #dde4ea;border-radius:8px;cursor:pointer;flex:1;min-width:320px}
+.panel{width:280px;flex:none;border:1px solid #dde4ea;border-radius:8px;padding:16px;height:fit-content}
+.panel h2{font-size:17px;margin:0 0 8px}
+.panel p{font-size:14px;line-height:1.6;margin:6px 0}
+.panel .big{font-size:24px;font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12.5px;color:#5c6b7a;margin:14px 0}
+.legend .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.callouts,.caption,.method{font-size:14px;line-height:1.5;color:#37424e}
+.method{color:#5c6b7a}
+"""
+    body = f"""<main>
+<h1>{esc(title)}</h1>
+<p class="sub">{esc(subtitle)}</p>
+<p class="howto">How to read this: find turn 1, follow an arc back to the turn it rewrote, click a node for its detail.</p>
+<div class="controls">
+<button id="view-timeline" type="button" class="viewbtn active">Timeline</button>
+<button id="view-spiral" type="button" class="viewbtn">3D spiral</button>
+<label class="heavy"><input id="heavy" type="checkbox"> Heavy edges only (at least {REWORK_HEAVY_THRESHOLD} lines each)</label>
+<button id="reset" type="button">Reset view</button>
+</div>
+<p class="hint" id="hint">Turns run left to right in order. Arcs rise above the line.</p>
+<div class="stage">
+<canvas id="web" width="1000" height="700"></canvas>
+<div class="panel" id="panel">
+<h2>Pick a turn</h2>
+<p>Click any node to see what that turn introduced, what it removed
+from earlier turns, and what later turns removed of it.</p>
+</div>
+</div>
+<div class="legend">
+<span><span class="sw" style="background:#46689e"></span>First prompt</span>
+<span><span class="sw" style="background:#2f8f83"></span>Follow-up prompt</span>
+<span><span class="sw" style="background:#e07a3f"></span>Correction prompt</span>
+<span><span class="sw" style="background:#c94f5e"></span>Prompt after an error</span>
+<span><span class="sw" style="background:#8a97a5"></span>Short arc, nearby turn</span>
+<span><span class="sw" style="background:#2f8f83"></span>Medium arc</span>
+<span><span class="sw" style="background:#e07a3f"></span>Long arc, far back in time</span>
+<span><span class="sw" style="background:#17222e;width:15px;height:15px;border-radius:50%"></span>Bigger node: more lines introduced</span>
+</div>
+<p class="callouts">{esc(callouts)}</p>
+<p class="caption">{esc(REWORK_CAPTION)}</p>
+<p class="method">{esc(REWORK_METHOD)}</p>
+</main>
+"""
+    js = """
+const D = JSON.parse(document.getElementById('rework-data').textContent);
+const canvas = document.getElementById('web');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const HEAVY = HEAVY_THRESHOLD;
+let view = 'timeline';
+let heavyOnly = false;
+let yaw = -0.6, pitch = 0.45, zoom = 1.0, selected = null;
+function spanColour(span) {
+  if (span <= 3) return '#8a97a5';
+  if (span <= 15) return '#2f8f83';
+  return '#e07a3f';
+}
+function nodeRadius(n) {
+  return 5 + Math.min(9, Math.sqrt(n.introduced) * 0.45);
+}
+function visibleEdges() {
+  return heavyOnly ? D.edges.filter(e => e.weight >= HEAVY) : D.edges;
+}
+function project(p) {
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const x1 = p.x * cy + p.z * sy;
+  const z1 = -p.x * sy + p.z * cy;
+  const y1 = p.y * cp - z1 * sp;
+  const z2 = p.y * sp + z1 * cp;
+  const s = zoom * 620 / (620 + z2);
+  return {x: W / 2 + x1 * s, y: H / 2 - y1 * s, z: z2, s: s};
+}
+function timelinePos(n) {
+  const pad = 50;
+  const count = D.nodes.length;
+  const x = count > 1 ? pad + (n.turn - 1) / (count - 1) * (W - 2 * pad) : W / 2;
+  return {x: x, y: 450, r: nodeRadius(n)};
+}
+function drawTimeline() {
+  ctx.clearRect(0, 0, W, H);
+  const pos = {};
+  D.nodes.forEach(n => { pos[n.turn] = timelinePos(n); });
+  ctx.strokeStyle = '#dde4ea';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(30, 450);
+  ctx.lineTo(W - 30, 450);
+  ctx.stroke();
+  visibleEdges().forEach(e => {
+    const a = pos[e.from], b = pos[e.to];
+    const incident = selected !== null && (e.from === selected || e.to === selected);
+    ctx.globalAlpha = selected === null ? 0.55 : (incident ? 0.95 : 0.10);
+    ctx.strokeStyle = spanColour(e.span);
+    ctx.lineWidth = 1 + Math.min(3, e.weight / 80);
+    const mx = (a.x + b.x) / 2;
+    const lift = 40 + Math.min(260, e.span * 8);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.quadraticCurveTo(mx, a.y - lift, b.x, b.y);
+    ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+  D.nodes.forEach(n => {
+    const p = pos[n.turn];
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = D.colours[n.kind];
+    ctx.fill();
+    if (selected === n.turn) {
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#17222e';
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#17222e';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(n.turn), p.x, p.y + p.r + 14);
+  });
+  ctx.textAlign = 'left';
+}
+function drawSpiral() {
+  ctx.clearRect(0, 0, W, H);
+  const pts = {};
+  D.nodes.forEach(n => { pts[n.turn] = project(D.layout[String(n.turn)]); });
+  const edges = visibleEdges().map(e => {
+    const a = pts[e.from], b = pts[e.to];
+    return {e: e, depth: (a.z + b.z) / 2, a: a, b: b};
+  });
+  edges.sort((p, q) => q.depth - p.depth);
+  edges.forEach(item => {
+    const e = item.e, a = item.a, b = item.b;
+    const incident = selected !== null && (e.from === selected || e.to === selected);
+    ctx.globalAlpha = selected === null ? 0.55 : (incident ? 0.95 : 0.10);
+    ctx.strokeStyle = spanColour(e.span);
+    ctx.lineWidth = 1 + Math.min(3, e.weight / 80);
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const lift = 18 + Math.min(90, e.span * 4);
+    const cx = mx - dy / len * lift, cy = my + dx / len * lift;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.quadraticCurveTo(cx, cy, b.x, b.y);
+    ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+  const nodes = D.nodes.map(n => ({n: n, p: pts[n.turn]}));
+  nodes.sort((p, q) => q.p.z - p.p.z);
+  nodes.forEach(item => {
+    const n = item.n, p = item.p;
+    const r = nodeRadius(n);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r * p.s, 0, Math.PI * 2);
+    ctx.fillStyle = D.colours[n.kind];
+    ctx.fill();
+    if (selected === n.turn) {
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#17222e';
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#17222e';
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.fillText(String(n.turn), p.x + r * p.s + 4, p.y + 4);
+  });
+}
+function draw() {
+  if (view === 'timeline') drawTimeline(); else drawSpiral();
+}
+function showPanel(n) {
+  const panel = document.getElementById('panel');
+  panel.innerHTML = '<h2>Turn ' + n.turn + '</h2>'
+    + '<p class="big">' + D.kinds[n.kind] + '</p>'
+    + '<p>Introduced ' + n.introduced.toLocaleString('en-US') + ' lines.</p>'
+    + '<p>Removed ' + n.removed_from_earlier.toLocaleString('en-US')
+    + ' lines from earlier turns.</p>'
+    + '<p>Later turns removed ' + n.removed_by_later.toLocaleString('en-US')
+    + ' lines of this turn.</p>'
+    + '<p>' + n.surviving.toLocaleString('en-US')
+    + ' lines of this turn survive to the final artifact.</p>';
+}
+function nodeAt(mx, my) {
+  let best = null, bestD = 20;
+  D.nodes.forEach(n => {
+    const p = view === 'timeline' ? timelinePos(n) : project(D.layout[String(n.turn)]);
+    const d = Math.hypot(p.x - mx, p.y - my);
+    if (d < bestD) { bestD = d; best = n; }
+  });
+  return best;
+}
+function setView(v) {
+  view = v;
+  document.getElementById('view-timeline').className = v === 'timeline' ? 'viewbtn active' : 'viewbtn';
+  document.getElementById('view-spiral').className = v === 'spiral' ? 'viewbtn active' : 'viewbtn';
+  document.getElementById('hint').textContent = v === 'timeline'
+    ? 'Turns run left to right in order. Arcs rise above the line.'
+    : 'Drag to orbit. Scroll to zoom. Click a node for its detail.';
+  draw();
+}
+document.getElementById('view-timeline').addEventListener('click', () => setView('timeline'));
+document.getElementById('view-spiral').addEventListener('click', () => setView('spiral'));
+document.getElementById('heavy').addEventListener('change', e => { heavyOnly = e.target.checked; draw(); });
+let drag = null, dragged = false;
+canvas.addEventListener('pointerdown', e => {
+  if (view !== 'spiral') return;
+  drag = {x: e.clientX, y: e.clientY, yaw: yaw, pitch: pitch};
+  dragged = false;
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  if (!drag) return;
+  if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 6) dragged = true;
+  yaw = drag.yaw + (e.clientX - drag.x) * 0.01;
+  pitch = Math.max(-1.2, Math.min(1.2, drag.pitch + (e.clientY - drag.y) * 0.01));
+  draw();
+});
+canvas.addEventListener('pointerup', () => { drag = null; });
+canvas.addEventListener('wheel', e => {
+  if (view !== 'spiral') return;
+  e.preventDefault();
+  zoom = Math.max(0.4, Math.min(3.0, zoom * (e.deltaY < 0 ? 1.1 : 0.9)));
+  draw();
+}, {passive: false});
+canvas.addEventListener('click', e => {
+  if (dragged) { dragged = false; return; }
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (W / rect.width);
+  const my = (e.clientY - rect.top) * (H / rect.height);
+  const best = nodeAt(mx, my);
+  if (best) { selected = best.turn; showPanel(best); draw(); }
+});
+document.getElementById('reset').addEventListener('click', () => {
+  yaw = -0.6; pitch = 0.45; zoom = 1.0; selected = null; draw();
+});
+draw();
+"""
+    js = js.replace("HEAVY_THRESHOLD", str(REWORK_HEAVY_THRESHOLD))
+    return ("<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">\n"
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
+            f"<title>{esc(title)}</title>\n<style>{css}</style></head><body>"
+            + body +
+            f"<script id=\"rework-data\" type=\"application/json\">{data}</script>\n"
+            f"<script>{js}</script>\n</body></html>")
+
+
+def rework_main(argv):
+    """CLI: steerprint --rework session.jsonl [--receipt receipt.json]
+    -o rework-web-3d.html. The graph comes from the shipped rework
+    builder; the receipt, when given, supplies only the header label,
+    mark, and post-first share, never graph data."""
+    args = list(argv)
+    out_path = Path("rework-web-3d.html")
+    if "-o" in args:
+        out_path = Path(args[args.index("-o") + 1])
+    receipt_path = None
+    if "--receipt" in args:
+        receipt_path = args[args.index("--receipt") + 1]
+    pos = []
+    skip_next = False
+    for a in args:
+        if skip_next:
+            skip_next = False
+            continue
+        if a in ("-o", "--receipt"):
+            skip_next = True
+            continue
+        if a.startswith("-"):
+            continue
+        pos.append(a)
+    if len(pos) != 1:
+        sys.exit("--rework takes exactly one session")
+    graph = rework_graph(Path(pos[0]))
+    title = "Rework web"
+    subtitle = (f"{graph['turns']} human turns. {graph['edge_count']} "
+                f"rework edges covering {graph['total_weight']:,} lines.")
+    if receipt_path:
+        r = json.loads(Path(receipt_path).read_text(encoding="utf-8"))
+        title = f"Rework web: {r.get('label', 'session')}"
+        mark = (r.get("mark") or {}).get("category")
+        pct = headline_pct(r.get("git_join") or {})
+        extra = []
+        if mark:
+            extra.append(f"mark {mark}")
+        if pct is not None:
+            extra.append(f"{pct}% of lines arrived after the first prompt")
+        if extra:
+            subtitle += " " + ", ".join(extra) + "."
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(rework_html(graph, {"title": title,
+                                            "subtitle": subtitle}),
+                        encoding="utf-8")
+    print(f"wrote rework {out_path} ({out_path.stat().st_size:,} bytes, "
+          f"{graph['edge_count']} edges)")
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if "--rework" in argv:
+        rework_main(argv)
+        return
     if "--replay" in argv:
         replay_main(argv)
         return
