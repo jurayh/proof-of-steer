@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rework web</title>
+<style>
+body{font-family:system-ui,-apple-system,sans-serif;color:#17222e;background:#f6f8fa;margin:0;padding:24px}
+main{max-width:1000px;margin:0 auto;background:#fff;border:1px solid #dde4ea;border-radius:8px;padding:24px}
+h1{font-size:22px;margin:0 0 4px} .sub{color:#5c6b7a;margin:0 0 16px}
+.howto{font-size:15px;margin:0 0 12px}
+.hint{font-size:14px;color:#5c6b7a;margin:0 0 12px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 12px}
+button{font-size:14px;padding:6px 14px;cursor:pointer}
+.viewbtn{background:#fff;color:#17222e;border:1px solid #dde4ea;border-radius:6px}
+.viewbtn.active{background:#17222e;color:#fff;border-color:#17222e}
+.heavy{font-size:14px}
+.stage{display:flex;gap:20px;flex-wrap:wrap}
+canvas{background:#fbfcfe;border:1px solid #dde4ea;border-radius:8px;cursor:pointer;flex:1;min-width:320px}
+.panel{width:280px;flex:none;border:1px solid #dde4ea;border-radius:8px;padding:16px;height:fit-content}
+.panel h2{font-size:17px;margin:0 0 8px}
+.panel p{font-size:14px;line-height:1.6;margin:6px 0}
+.panel .big{font-size:24px;font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12.5px;color:#5c6b7a;margin:14px 0}
+.legend .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.callouts,.caption,.method{font-size:14px;line-height:1.5;color:#37424e}
+.method{color:#5c6b7a}
+</style></head><body><main>
+<h1>Rework web</h1>
+<p class="sub">40 human turns. 41 rework edges covering 1,256 lines.</p>
+<p class="howto">How to read this: find turn 1, follow an arc back to the turn it rewrote, click a node for its detail.</p>
+<div class="controls">
+<button id="view-timeline" type="button" class="viewbtn active">Timeline</button>
+<button id="view-spiral" type="button" class="viewbtn">3D spiral</button>
+<label class="heavy"><input id="heavy" type="checkbox"> Heavy edges only (at least 50 lines each)</label>
+<button id="reset" type="button">Reset view</button>
+</div>
+<p class="hint" id="hint">Turns run left to right in order. Arcs rise above the line.</p>
+<div class="stage">
+<canvas id="web" width="1000" height="700"></canvas>
+<div class="panel" id="panel">
+<h2>Pick a turn</h2>
+<p>Click any node to see what that turn introduced, what it removed
+from earlier turns, and what later turns removed of it.</p>
+</div>
+</div>
+<div class="legend">
+<span><span class="sw" style="background:#46689e"></span>First prompt</span>
+<span><span class="sw" style="background:#2f8f83"></span>Follow-up prompt</span>
+<span><span class="sw" style="background:#e07a3f"></span>Correction prompt</span>
+<span><span class="sw" style="background:#c94f5e"></span>Prompt after an error</span>
+<span><span class="sw" style="background:#8a97a5"></span>Short arc, nearby turn</span>
+<span><span class="sw" style="background:#2f8f83"></span>Medium arc</span>
+<span><span class="sw" style="background:#e07a3f"></span>Long arc, far back in time</span>
+<span><span class="sw" style="background:#17222e;width:15px;height:15px;border-radius:50%"></span>Bigger node: more lines introduced</span>
+</div>
+<p class="callouts">Look first at turn 6, which removed 340 lines from turn 4, the single biggest rewrite. Turn 14 removed 713 lines from earlier turns, more than any other turn.</p>
+<p class="caption">Each node is one human turn, in order along a line. An edge from a later turn to an earlier turn means the later turn removed lines the earlier turn introduced. Edge thickness grows with the number of lines removed. Long arcs reach far back in time. Short arcs join neighbouring turns. The same graph in 3D sits behind the 3D spiral toggle. Edges count discards in the replay. They are not a claim about what the author meant. The one-prompt control has a single turn and therefore no rework to show.</p>
+<p class="method">The graph comes from the shipped prefix replays, the same snapshots the artifact replay uses. For each turn, the lines of each earlier turn present before the turn but absent after it become one edge, weighted by the count. Counts cover non-blank lines only, matching the receipt.</p>
+</main>
+<script id="rework-data" type="application/json">{"nodes": [{"turn": 1, "segment": 0, "kind": "first", "introduced": 507, "removed_from_earlier": 0, "removed_by_later": 109, "surviving": 398}, {"turn": 2, "segment": 1, "kind": "correction", "introduced": 189, "removed_from_earlier": 0, "removed_by_later": 0, "surviving": 189}, {"turn": 3, "segment": 2, "kind": "after_error", "introduced": 0, "removed_from_earlier": 0, "removed_by_later": 0, "surviving": 0}, {"turn": 4, "segment": 3, "kind": "followup", "introduced": 430, "removed_from_earlier": 109, "removed_by_later": 371, "surviving": 59}, {"turn": 5, "segment": 4, "kind": "followup", "introduced": 0, "removed_from_earlier": 0, "removed_by_later": 0, "surviving": 0}, {"turn": 6, "segment": 5, "kind": "correction", "introduced": 300, "removed_from_earlier": 340, "removed_by_later": 218, "surviving": 82}, {"turn": 7, "segment": 6, "kind": "followup", "introduced": 11, "removed_from_earlier": 2, "removed_by_later": 9, "surviving": 2}, {"turn": 8, "segment": 7, "kind": "followup", "introduced": 36, "removed_from_earlier": 12, "removed_by_later": 9, "surviving": 27}, {"turn": 9, "segment": 8, "kind": "correction", "introduced": 505, "removed_from_earlier": 2, "removed_by_later": 223, "surviving": 282}, {"turn": 10, "segment": 9, "kind": "correction", "introduced": 1, "removed_from_earlier": 1, "removed_by_later": 1, "surviving": 0}, {"turn": 11, "segment": 10, "kind": "followup", "introduced": 0, "removed_from_earlier": 0, "removed_by_later": 0, "surviving": 0}, {"turn": 12, "segment": 11, "kind": "followup", "introduced": 9, "removed_from_earlier": 1, "removed_by_later": 0, "surviving": 9}, {"turn": 13, "segment": 12, "kind": "correction", "introduced": 569, "removed_from_earlier": 6, "removed_by_later": 267, "surviving": 302}, {"turn": 14, "segment": 13, "kind": "followup", "introduced": 706, "removed_from_earlier": 713, "removed_by_later": 17, "surviving": 689}, {"turn": 15, "segment": 14, "kind": "followup", "introduced": 4, "removed_from_earlier": 1, "removed_by_later": 2, "surviving": 2}, {"turn": 16, "segment": 15, "kind": "correction", "introduced": 10, "removed_from_earlier": 6, "removed_by_later": 0, "surviving": 10}, {"turn": 17, "segment": 16, "kind": "followup", "introduced": 2, "removed_from_earlier": 2, "removed_by_later": 0, "surviving": 2}, {"turn": 18, "segment": 17, "kind": "followup", "introduced": 10, "removed_from_earlier": 4, "removed_by_later": 0, "surviving": 10}, {"turn": 19, "segment": 18, "kind": "followup", "introduced": 0, "removed_from_earlier": 0, "removed_by_later": 0, "surviving": 0}, {"turn": 20, "segment": 19, "kind": "followup", "introduced": 240, "removed_from_earlier": 0, "removed_by_later": 8, "surviving": 232}, {"turn": 21, "segment": 20, "kind": "followup", "introduced": 1, "removed_from_earlier": 1, "removed_by_later": 1, "surviving": 0}, {"turn": 22, "segment": 21, "kind": "followup", "introduced": 0, "removed_from_earlier": 0, "removed_by_later": 0, "surviving": 0}, {"turn": 23, "segment": 22, "kind": "correction", "introduced": 28, "removed_from_earlier": 1, "removed_by_later": 2, "surviving": 26}, {"turn": 24, "segment": 23, "kind": "correction", "introduced": 16, "removed_from_earlier": 2, "removed_by_later": 1, "surviving": 15}, {"turn": 25, "segment": 24, "kind": "followup", "introduced": 425, "removed_from_earlier": 2, "removed_by_later": 3, "surviving": 422}, {"turn": 26, "segment": 25, "kind": "correction", "introduced": 0, "removed_from_earlier": 2, "removed_by_later": 0, "surviving": 0}, {"turn": 27, "segment": 26, "kind": "followup", "introduced": 0, "removed_from_earlier": 0, "removed_by_later": 0, "surviving": 0}, {"turn": 28, "segment": 27, "kind": "followup", "introduced": 167, "removed_from_earlier": 3, "removed_by_later": 0, "surviving": 167}, {"turn": 29, "segment": 28, "kind": "after_error", "introduced": 6, "removed_from_earlier": 6, "removed_by_later": 0, "surviving": 6}, {"turn": 30, "segment": 29, "kind": "correction", "introduced": 0, "removed_from_earlier": 0, "removed_by_later": 0, "surviving": 0}, {"turn": 31, "segment": 30, "kind": "followup", "introduced": 32, "removed_from_earlier": 21, "removed_by_later": 3, "surviving": 29}, {"turn": 32, "segment": 31, "kind": "correction", "introduced": 6, "removed_from_earlier": 5, "removed_by_later": 5, "surviving": 1}, {"turn": 33, "segment": 32, "kind": "correction", "introduced": 5, "removed_from_earlier": 5, "removed_by_later": 5, "surviving": 0}, {"turn": 34, "segment": 33, "kind": "followup", "introduced": 6, "removed_from_earlier": 5, "removed_by_later": 2, "surviving": 4}, {"turn": 35, "segment": 34, "kind": "followup", "introduced": 2, "removed_from_earlier": 2, "removed_by_later": 0, "surviving": 2}, {"turn": 36, "segment": 35, "kind": "followup", "introduced": 0, "removed_from_earlier": 0, "removed_by_later": 0, "surviving": 0}, {"turn": 37, "segment": 36, "kind": "after_error", "introduced": 0, "removed_from_earlier": 0, "removed_by_later": 0, "surviving": 0}, {"turn": 38, "segment": 37, "kind": "after_error", "introduced": 2, "removed_from_earlier": 2, "removed_by_later": 0, "surviving": 2}, {"turn": 39, "segment": 38, "kind": "followup", "introduced": 53, "removed_from_earlier": 0, "removed_by_later": 0, "surviving": 53}, {"turn": 40, "segment": 39, "kind": "followup", "introduced": 80, "removed_from_earlier": 0, "removed_by_later": 0, "surviving": 80}], "edges": [{"from": 4, "to": 1, "weight": 109, "span": 3}, {"from": 6, "to": 4, "weight": 340, "span": 2}, {"from": 7, "to": 6, "weight": 2, "span": 1}, {"from": 8, "to": 4, "weight": 1, "span": 4}, {"from": 8, "to": 6, "weight": 11, "span": 2}, {"from": 9, "to": 4, "weight": 1, "span": 5}, {"from": 9, "to": 6, "weight": 1, "span": 3}, {"from": 10, "to": 6, "weight": 1, "span": 4}, {"from": 12, "to": 8, "weight": 1, "span": 4}, {"from": 13, "to": 8, "weight": 6, "span": 5}, {"from": 14, "to": 4, "weight": 29, "span": 10}, {"from": 14, "to": 6, "weight": 194, "span": 8}, {"from": 14, "to": 7, "weight": 9, "span": 7}, {"from": 14, "to": 9, "weight": 219, "span": 5}, {"from": 14, "to": 10, "weight": 1, "span": 4}, {"from": 14, "to": 13, "weight": 261, "span": 1}, {"from": 15, "to": 14, "weight": 1, "span": 1}, {"from": 16, "to": 14, "weight": 4, "span": 2}, {"from": 16, "to": 15, "weight": 2, "span": 1}, {"from": 17, "to": 13, "weight": 2, "span": 4}, {"from": 18, "to": 13, "weight": 4, "span": 5}, {"from": 21, "to": 6, "weight": 1, "span": 15}, {"from": 23, "to": 8, "weight": 1, "span": 15}, {"from": 24, "to": 23, "weight": 2, "span": 1}, {"from": 25, "to": 21, "weight": 1, "span": 4}, {"from": 25, "to": 24, "weight": 1, "span": 1}, {"from": 26, "to": 6, "weight": 2, "span": 20}, {"from": 28, "to": 6, "weight": 2, "span": 22}, {"from": 28, "to": 8, "weight": 1, "span": 20}, {"from": 29, "to": 20, "weight": 6, "span": 9}, {"from": 31, "to": 6, "weight": 2, "span": 25}, {"from": 31, "to": 9, "weight": 4, "span": 22}, {"from": 31, "to": 14, "weight": 10, "span": 17}, {"from": 31, "to": 20, "weight": 2, "span": 11}, {"from": 31, "to": 25, "weight": 3, "span": 6}, {"from": 32, "to": 14, "weight": 2, "span": 18}, {"from": 32, "to": 31, "weight": 3, "span": 1}, {"from": 33, "to": 32, "weight": 5, "span": 1}, {"from": 34, "to": 33, "weight": 5, "span": 1}, {"from": 35, "to": 34, "weight": 2, "span": 1}, {"from": 38, "to": 6, "weight": 2, "span": 32}], "layout": {"1": {"x": 93.2, "y": -280.0, "z": 0.0}, "2": {"x": 59.92320094129205, "y": -266.0, "z": 75.51271408808941}, "3": {"x": -22.629328631431473, "y": -252.0, "z": 96.99522403546823}, "4": {"x": -92.93861619935389, "y": -238.0, "z": 43.9346516880377}, "5": {"x": -95.05639213141959, "y": -224.0, "z": -46.907166989254364}, "6": {"x": -23.018901297841143, "y": -210.0, "z": -106.7462888490286}, "7": {"x": 71.33947925595214, "y": -196.0, "z": -86.85872840129296}, "8": {"x": 115.58365836592279, "y": -182.0, "z": 1.9436868959908267}, "9": {"x": 72.27213616643184, "y": -168.0, "z": 94.28774222527939}, "10": {"x": -29.712386755766516, "y": -154.0, "z": 118.32655692310053}, "11": {"x": -114.07350878796156, "y": -140.0, "z": 51.597234352267925}, "12": {"x": -114.17214399709634, "y": -126.0, "z": -58.74760876075126}, "13": {"x": -25.573815689522057, "y": -112.0, "z": -129.09120787675027}, "14": {"x": 87.29598645054267, "y": -98.0, "z": -102.71538711228554}, "15": {"x": 137.92197279913864, "y": -84.0, "z": 4.639980516516864}, "16": {"x": 84.00279765935674, "y": -70.0, "z": 113.49436102908888}, "17": {"x": -37.51762623726635, "y": -56.0, "z": 139.44098293371567}, "18": {"x": -135.48658318914968, "y": -42.0, "z": 58.55890859407834}, "19": {"x": -132.910971546625, "y": -28.0, "z": -71.24123554888871}, "20": {"x": -27.38259695295981, "y": -14.0, "z": -151.5460107825731}, "21": {"x": 103.8017865359694, "y": 0.0, "z": -118.05519519250747}, "22": {"x": 160.19596594585764, "y": 14.0, "z": 8.08779912421309}, "23": {"x": 95.10424841284168, "y": 28.0, "z": 133.11702345616246}, "24": {"x": -46.03965248841111, "y": 42.0, "z": 160.32027444695305}, "25": {"x": -157.16020173540068, "y": 56.0, "z": 64.81258358133982}, "26": {"x": -151.2563636641969, "y": 70.0, "z": -84.37862555816024}, "27": {"x": -28.442376906786297, "y": 84.0, "z": -174.09190445248254}, "28": {"x": 120.84392974197509, "y": 98.0, "z": -132.86423387998968}, "29": {"x": 182.38668579829866, "y": 112.0, "z": 12.285635657656817}, "30": {"x": 105.56590049494716, "y": 126.0, "z": 153.13993813728317}, "31": {"x": -55.272662612441806, "y": 140.0, "z": 180.94632565413195}, "32": {"x": -179.0765686032687, "y": 154.0, "z": 70.35156414237571}, "33": {"x": -169.19202107962892, "y": 168.0, "z": -98.14998727962433}, "34": {"x": -28.750708706950594, "y": 182.0, "z": -196.7100321510016}, "35": {"x": 138.40915472332534, "y": 196.0, "z": -147.12887510198186}, "36": {"x": 204.475214630722, "y": 210.0, "z": 17.23155830794645}, "37": {"x": 115.3775201486221, "y": 224.0, "z": 173.5470767381413}, "38": {"x": -65.2104480034277, "y": 238.0, "z": 201.30116112728277}, "39": {"x": -201.21773814363343, "y": 252.0, "z": 75.16955405189104}, "40": {"x": -186.7018641184247, "y": 266.0, "z": -112.5451639774241}}, "kinds": {"first": "First prompt", "followup": "Follow-up prompt", "correction": "Correction prompt", "after_error": "Prompt after an error"}, "colours": {"first": "#46689e", "followup": "#2f8f83", "correction": "#e07a3f", "after_error": "#c94f5e"}}</script>
+<script>
+const D = JSON.parse(document.getElementById('rework-data').textContent);
+const canvas = document.getElementById('web');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const HEAVY = 50;
+let view = 'timeline';
+let heavyOnly = false;
+let yaw = -0.6, pitch = 0.45, zoom = 1.0, selected = null;
+function spanColour(span) {
+  if (span <= 3) return '#8a97a5';
+  if (span <= 15) return '#2f8f83';
+  return '#e07a3f';
+}
+function nodeRadius(n) {
+  return 5 + Math.min(9, Math.sqrt(n.introduced) * 0.45);
+}
+function visibleEdges() {
+  return heavyOnly ? D.edges.filter(e => e.weight >= HEAVY) : D.edges;
+}
+function project(p) {
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const x1 = p.x * cy + p.z * sy;
+  const z1 = -p.x * sy + p.z * cy;
+  const y1 = p.y * cp - z1 * sp;
+  const z2 = p.y * sp + z1 * cp;
+  const s = zoom * 620 / (620 + z2);
+  return {x: W / 2 + x1 * s, y: H / 2 - y1 * s, z: z2, s: s};
+}
+function timelinePos(n) {
+  const pad = 50;
+  const count = D.nodes.length;
+  const x = count > 1 ? pad + (n.turn - 1) / (count - 1) * (W - 2 * pad) : W / 2;
+  return {x: x, y: 450, r: nodeRadius(n)};
+}
+function drawTimeline() {
+  ctx.clearRect(0, 0, W, H);
+  const pos = {};
+  D.nodes.forEach(n => { pos[n.turn] = timelinePos(n); });
+  ctx.strokeStyle = '#dde4ea';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(30, 450);
+  ctx.lineTo(W - 30, 450);
+  ctx.stroke();
+  visibleEdges().forEach(e => {
+    const a = pos[e.from], b = pos[e.to];
+    const incident = selected !== null && (e.from === selected || e.to === selected);
+    ctx.globalAlpha = selected === null ? 0.55 : (incident ? 0.95 : 0.10);
+    ctx.strokeStyle = spanColour(e.span);
+    ctx.lineWidth = 1 + Math.min(3, e.weight / 80);
+    const mx = (a.x + b.x) / 2;
+    const lift = 40 + Math.min(260, e.span * 8);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.quadraticCurveTo(mx, a.y - lift, b.x, b.y);
+    ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+  D.nodes.forEach(n => {
+    const p = pos[n.turn];
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = D.colours[n.kind];
+    ctx.fill();
+    if (selected === n.turn) {
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#17222e';
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#17222e';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(n.turn), p.x, p.y + p.r + 14);
+  });
+  ctx.textAlign = 'left';
+}
+function drawSpiral() {
+  ctx.clearRect(0, 0, W, H);
+  const pts = {};
+  D.nodes.forEach(n => { pts[n.turn] = project(D.layout[String(n.turn)]); });
+  const edges = visibleEdges().map(e => {
+    const a = pts[e.from], b = pts[e.to];
+    return {e: e, depth: (a.z + b.z) / 2, a: a, b: b};
+  });
+  edges.sort((p, q) => q.depth - p.depth);
+  edges.forEach(item => {
+    const e = item.e, a = item.a, b = item.b;
+    const incident = selected !== null && (e.from === selected || e.to === selected);
+    ctx.globalAlpha = selected === null ? 0.55 : (incident ? 0.95 : 0.10);
+    ctx.strokeStyle = spanColour(e.span);
+    ctx.lineWidth = 1 + Math.min(3, e.weight / 80);
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const lift = 18 + Math.min(90, e.span * 4);
+    const cx = mx - dy / len * lift, cy = my + dx / len * lift;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.quadraticCurveTo(cx, cy, b.x, b.y);
+    ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+  const nodes = D.nodes.map(n => ({n: n, p: pts[n.turn]}));
+  nodes.sort((p, q) => q.p.z - p.p.z);
+  nodes.forEach(item => {
+    const n = item.n, p = item.p;
+    const r = nodeRadius(n);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r * p.s, 0, Math.PI * 2);
+    ctx.fillStyle = D.colours[n.kind];
+    ctx.fill();
+    if (selected === n.turn) {
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#17222e';
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#17222e';
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.fillText(String(n.turn), p.x + r * p.s + 4, p.y + 4);
+  });
+}
+function draw() {
+  if (view === 'timeline') drawTimeline(); else drawSpiral();
+}
+function showPanel(n) {
+  const panel = document.getElementById('panel');
+  panel.innerHTML = '<h2>Turn ' + n.turn + '</h2>'
+    + '<p class="big">' + D.kinds[n.kind] + '</p>'
+    + '<p>Introduced ' + n.introduced.toLocaleString('en-US') + ' lines.</p>'
+    + '<p>Removed ' + n.removed_from_earlier.toLocaleString('en-US')
+    + ' lines from earlier turns.</p>'
+    + '<p>Later turns removed ' + n.removed_by_later.toLocaleString('en-US')
+    + ' lines of this turn.</p>'
+    + '<p>' + n.surviving.toLocaleString('en-US')
+    + ' lines of this turn survive to the final artifact.</p>';
+}
+function nodeAt(mx, my) {
+  let best = null, bestD = 20;
+  D.nodes.forEach(n => {
+    const p = view === 'timeline' ? timelinePos(n) : project(D.layout[String(n.turn)]);
+    const d = Math.hypot(p.x - mx, p.y - my);
+    if (d < bestD) { bestD = d; best = n; }
+  });
+  return best;
+}
+function setView(v) {
+  view = v;
+  document.getElementById('view-timeline').className = v === 'timeline' ? 'viewbtn active' : 'viewbtn';
+  document.getElementById('view-spiral').className = v === 'spiral' ? 'viewbtn active' : 'viewbtn';
+  document.getElementById('hint').textContent = v === 'timeline'
+    ? 'Turns run left to right in order. Arcs rise above the line.'
+    : 'Drag to orbit. Scroll to zoom. Click a node for its detail.';
+  draw();
+}
+document.getElementById('view-timeline').addEventListener('click', () => setView('timeline'));
+document.getElementById('view-spiral').addEventListener('click', () => setView('spiral'));
+document.getElementById('heavy').addEventListener('change', e => { heavyOnly = e.target.checked; draw(); });
+let drag = null, dragged = false;
+canvas.addEventListener('pointerdown', e => {
+  if (view !== 'spiral') return;
+  drag = {x: e.clientX, y: e.clientY, yaw: yaw, pitch: pitch};
+  dragged = false;
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  if (!drag) return;
+  if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 6) dragged = true;
+  yaw = drag.yaw + (e.clientX - drag.x) * 0.01;
+  pitch = Math.max(-1.2, Math.min(1.2, drag.pitch + (e.clientY - drag.y) * 0.01));
+  draw();
+});
+canvas.addEventListener('pointerup', () => { drag = null; });
+canvas.addEventListener('wheel', e => {
+  if (view !== 'spiral') return;
+  e.preventDefault();
+  zoom = Math.max(0.4, Math.min(3.0, zoom * (e.deltaY < 0 ? 1.1 : 0.9)));
+  draw();
+}, {passive: false});
+canvas.addEventListener('click', e => {
+  if (dragged) { dragged = false; return; }
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (W / rect.width);
+  const my = (e.clientY - rect.top) * (H / rect.height);
+  const best = nodeAt(mx, my);
+  if (best) { selected = best.turn; showPanel(best); draw(); }
+});
+document.getElementById('reset').addEventListener('click', () => {
+  yaw = -0.6; pitch = 0.45; zoom = 1.0; selected = null; draw();
+});
+draw();
+</script>
+</body></html>
