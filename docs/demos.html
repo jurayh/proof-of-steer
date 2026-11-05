@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>proof-of-steer: Demos.</title>
-<meta name="description" content="The proof-of-steer figures in one place: the Steerprint, the counterfactual shadow, the artifact replay, the findings, and a filled disclosure sample.">
+<meta name="description" content="The proof-of-steer figures in one place: the Steerprint, the counterfactual shadow, the artifact replay, the rework web, the findings, and a filled disclosure sample.">
 <style>
 :root{
   --ink:#17222e; --muted:#5c6b7a; --line:#dde4ea; --card:#ffffff;
@@ -97,6 +97,12 @@ a{color:var(--first)}
   <p>A time-lapse of the artifact being built, turn by turn. Files appear as they are created. Strips fill as lines arrive, shift color as later turns reshape them, and fade as lines are discarded. Play it, pause it, scrub through it, and watch forty turns of steering build an app.</p>
   <p>The replay has 41 frames, one for the empty artifact and one after each human turn, with play, pause, scrub, and speed controls. The final frame matches the receipt exactly at 3,102 lines across 28 files.</p>
   <p><a href="artifact-replay.html"><strong>Open the artifact replay</strong></a></p>
+</section>
+
+<section>
+  <h2>The rework web</h2>
+  <p>Which turns talked to which. Forty turns sit on a timeline in order, and an arc runs from each later turn back to the earlier turn whose lines it removed. The shape shows the session arguing with itself: most arcs land in the first half of the session, and the longest ones reach back to the opening turns. Turn 6 removed 340 lines from turn 4, the single biggest rewrite, and turn 14 removed 713 lines from earlier turns, more than any other turn. A 3D spiral of the same web sits behind a toggle.</p>
+  <p><a href="rework-web-3d.html"><strong>Open the rework web</strong></a></p>
 </section>
 
 <section>
