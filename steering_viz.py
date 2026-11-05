@@ -963,7 +963,9 @@ def replay_main(argv):
 
 
 REWORK_CAPTION = (
-    "Each node is one human turn, in order along a line. An edge from "
+    "Each node is one human turn, placed left to right in turn order "
+    "and in the lane for its kind, so kind reads by position as well "
+    "as by color. An edge from "
     "a later turn to an earlier turn means the later turn removed "
     "lines the earlier turn introduced. Edge thickness grows with the "
     "number of lines removed. Long arcs reach far back in time. Short "
@@ -980,6 +982,8 @@ REWORK_METHOD = (
     "each earlier turn present before the turn but absent after it "
     "become one edge, weighted by the count. Counts cover non-blank "
     "lines only, matching the receipt.")
+
+REWORK_LANE_ORDER = ["first", "followup", "correction", "after_error"]
 
 REWORK_KIND_LABELS = {
     "first": "First prompt",
@@ -1081,9 +1085,10 @@ def rework_graph(session_path):
 
 def rework_html(graph, meta):
     """Build the rework web page. All graph data is embedded as
-    JSON. The page opens on a timeline arc diagram: turns in order
-    along a line, arcs above it back to the turn each later turn
-    rewrote. The 3D spiral of the same graph sits behind a toggle.
+    JSON. The page opens on a lanes diagram: turns in order left to
+    right, one horizontal lane per kind, arcs back to the turn each
+    later turn rewrote. The 3D spiral of the same graph sits behind
+    a toggle.
     The page has no external assets, plays nothing on load, and is
     driven by click for detail, with drag to orbit and scroll to zoom
     in the spiral view only."""
@@ -1139,7 +1144,7 @@ canvas{background:#fbfcfe;border:1px solid #dde4ea;border-radius:8px;cursor:poin
 <label class="heavy"><input id="heavy" type="checkbox"> Heavy edges only (at least {REWORK_HEAVY_THRESHOLD} lines each)</label>
 <button id="reset" type="button">Reset view</button>
 </div>
-<p class="hint" id="hint">Turns run left to right in order. Arcs rise above the line.</p>
+<p class="hint" id="hint">Turns run left to right in order, one lane per kind. Arcs join a turn to the earlier turn it rewrote.</p>
 <div class="stage">
 <canvas id="web" width="1000" height="700"></canvas>
 <div class="panel" id="panel">
@@ -1193,21 +1198,45 @@ function project(p) {
   const s = zoom * 620 / (620 + z2);
   return {x: W / 2 + x1 * s, y: H / 2 - y1 * s, z: z2, s: s};
 }
-function timelinePos(n) {
-  const pad = 50;
+const LANES = LANE_ORDER_JSON;
+function laneGeom() {
+  return {gutter: 170, top: 30, band: 150, right: W - 30};
+}
+function lanePos(n) {
+  const g = laneGeom();
   const count = D.nodes.length;
-  const x = count > 1 ? pad + (n.turn - 1) / (count - 1) * (W - 2 * pad) : W / 2;
-  return {x: x, y: 450, r: nodeRadius(n)};
+  const x = count > 1 ? g.gutter + (n.turn - 1) / (count - 1) * (g.right - g.gutter) : (g.gutter + g.right) / 2;
+  const y = g.top + LANES.indexOf(n.kind) * g.band + g.band / 2;
+  return {x: x, y: y, r: nodeRadius(n)};
 }
 function drawTimeline() {
   ctx.clearRect(0, 0, W, H);
+  const g = laneGeom();
   const pos = {};
-  D.nodes.forEach(n => { pos[n.turn] = timelinePos(n); });
+  D.nodes.forEach(n => { pos[n.turn] = lanePos(n); });
+  LANES.forEach((kind, i) => {
+    const y0 = g.top + i * g.band;
+    if (i % 2 === 0) {
+      ctx.fillStyle = '#f4f7f9';
+      ctx.fillRect(0, y0, W, g.band);
+    }
+    ctx.strokeStyle = '#dde4ea';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, y0);
+    ctx.lineTo(W, y0);
+    ctx.stroke();
+    const count = D.nodes.filter(m => m.kind === kind).length;
+    ctx.fillStyle = '#5c6b7a';
+    ctx.font = '13px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(D.kinds[kind] + ' (' + count + ')', 12, y0 + g.band / 2 + 4);
+  });
   ctx.strokeStyle = '#dde4ea';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(30, 450);
-  ctx.lineTo(W - 30, 450);
+  ctx.moveTo(0, g.top + LANES.length * g.band);
+  ctx.lineTo(W, g.top + LANES.length * g.band);
   ctx.stroke();
   visibleEdges().forEach(e => {
     const a = pos[e.from], b = pos[e.to];
@@ -1216,10 +1245,11 @@ function drawTimeline() {
     ctx.strokeStyle = spanColour(e.span);
     ctx.lineWidth = 1 + Math.min(3, e.weight / 80);
     const mx = (a.x + b.x) / 2;
-    const lift = 40 + Math.min(260, e.span * 8);
+    const lift = Math.min(30 + Math.min(160, e.span * 6), Math.min(a.y, b.y) - 12);
+    const top = Math.min(a.y, b.y) - lift;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
-    ctx.quadraticCurveTo(mx, a.y - lift, b.x, b.y);
+    ctx.quadraticCurveTo(mx, top, b.x, b.y);
     ctx.stroke();
   });
   ctx.globalAlpha = 1;
@@ -1304,7 +1334,7 @@ function showPanel(n) {
 function nodeAt(mx, my) {
   let best = null, bestD = 20;
   D.nodes.forEach(n => {
-    const p = view === 'timeline' ? timelinePos(n) : project(D.layout[String(n.turn)]);
+    const p = view === 'timeline' ? lanePos(n) : project(D.layout[String(n.turn)]);
     const d = Math.hypot(p.x - mx, p.y - my);
     if (d < bestD) { bestD = d; best = n; }
   });
@@ -1315,7 +1345,7 @@ function setView(v) {
   document.getElementById('view-timeline').className = v === 'timeline' ? 'viewbtn active' : 'viewbtn';
   document.getElementById('view-spiral').className = v === 'spiral' ? 'viewbtn active' : 'viewbtn';
   document.getElementById('hint').textContent = v === 'timeline'
-    ? 'Turns run left to right in order. Arcs rise above the line.'
+    ? 'Turns run left to right in order, one lane per kind. Arcs join a turn to the earlier turn it rewrote.'
     : 'Drag to orbit. Scroll to zoom. Click a node for its detail.';
   draw();
 }
@@ -1357,6 +1387,7 @@ document.getElementById('reset').addEventListener('click', () => {
 draw();
 """
     js = js.replace("HEAVY_THRESHOLD", str(REWORK_HEAVY_THRESHOLD))
+    js = js.replace("LANE_ORDER_JSON", json.dumps(REWORK_LANE_ORDER))
     return ("<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">\n"
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
             f"<title>{esc(title)}</title>\n<style>{css}</style></head><body>"
