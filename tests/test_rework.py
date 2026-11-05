@@ -1,5 +1,6 @@
-"""Rework web figure (steering_viz --rework): timeline arc diagram by
-default, 3D spiral behind a toggle.
+"""Rework web figure (steering_viz --rework): lanes diagram by
+default (turn order left to right, one horizontal lane per kind),
+3D spiral behind a toggle.
 
 The graph derives only from the shipped tool's own prefix replays, the
 same snapshots the artifact replay uses: for each frame transition,
@@ -14,6 +15,7 @@ prose hygiene.
 Run from release/:  python3 -m unittest discover -s tests -v
 """
 import json, re, sys, tempfile, unittest
+from collections import Counter
 from pathlib import Path
 
 V1 = Path(__file__).resolve().parent.parent
@@ -167,6 +169,30 @@ class TestReworkGraph(unittest.TestCase):
         self.assertEqual([n["turn"] for n in data["nodes"]],
                          [1, 2, 3, 4])
 
+    def test_timeline_lanes(self):
+        g = _synthetic_graph()
+        html = steering_viz.rework_html(g, {"title": "t",
+                                            "subtitle": "s"})
+        # Lane order is first, follow-up, correction, after-error,
+        # top to bottom, and kind reads by position as well as color.
+        self.assertEqual(steering_viz.REWORK_LANE_ORDER,
+                         ["first", "followup", "correction",
+                          "after_error"])
+        self.assertIn('const LANES = ["first", "followup", '
+                      '"correction", "after_error"]', html)
+        self.assertIn("function lanePos(", html)
+        self.assertIn("LANES.indexOf(n.kind)", html)
+        self.assertIn("one lane per kind", html)
+        m = re.search(r'<script id="rework-data" type="application/json">'
+                      r'(.*?)</script>', html, re.S)
+        data = json.loads(m.group(1))
+        order = steering_viz.REWORK_LANE_ORDER
+        lanes = {n["turn"]: order.index(n["kind"])
+                 for n in data["nodes"]}
+        self.assertEqual(lanes, {1: 0, 2: 1, 3: 2, 4: 1})
+        kinds = Counter(n["kind"] for n in data["nodes"])
+        self.assertEqual([kinds[k] for k in order], [1, 2, 1, 0])
+
     def test_rework_cli_end_to_end(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "s.jsonl"
@@ -257,6 +283,16 @@ class TestReworkIceBerg(unittest.TestCase):
         heaviest = max(data["edges"], key=lambda e: e["weight"])
         self.assertEqual((heaviest["from"], heaviest["to"],
                           heaviest["weight"]), (6, 4, 340))
+        # Lanes: kind counts computed from the graph, in lane order
+        # top to bottom, and the lane machinery is in the page.
+        kinds = Counter(n["kind"] for n in data["nodes"])
+        self.assertEqual([kinds[k]
+                          for k in steering_viz.REWORK_LANE_ORDER],
+                         [1, 23, 12, 4])
+        self.assertIn('const LANES = ["first", "followup", '
+                      '"correction", "after_error"]', html)
+        self.assertIn("function lanePos(", html)
+        self.assertIn("one lane per kind", html)
         # The callouts name the heaviest edge and the biggest reworker.
         self.assertIn("Look first at turn 6", html)
         self.assertIn("Turn 14 removed 713", html)
