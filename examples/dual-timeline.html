@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dual timeline: code-steered-860618e1</title>
+<style>
+body{font-family:system-ui,-apple-system,sans-serif;color:#17222e;background:#f6f8fa;margin:0;padding:24px}
+main{max-width:1000px;margin:0 auto;background:#fff;border:1px solid #dde4ea;border-radius:8px;padding:24px}
+h1{font-size:22px;margin:0 0 4px} .sub{color:#5c6b7a;margin:0 0 16px}
+.howto{font-size:15px;margin:0 0 12px}
+.stage{display:flex;gap:20px;flex-wrap:wrap}
+canvas{background:#fbfcfe;border:1px solid #dde4ea;border-radius:8px;cursor:pointer;flex:1;min-width:320px}
+.panel{width:280px;flex:none;border:1px solid #dde4ea;border-radius:8px;padding:16px;height:fit-content}
+.panel h2{font-size:17px;margin:0 0 8px}
+.panel p{font-size:14px;line-height:1.6;margin:6px 0}
+.panel .big{font-size:24px;font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12.5px;color:#5c6b7a;margin:14px 0}
+.legend .shape{font-size:15px;margin-right:6px}
+.callouts,.caption,.method{font-size:14px;line-height:1.5;color:#37424e}
+.method{color:#5c6b7a}
+</style></head><body><main>
+<h1>Dual timeline: code-steered-860618e1</h1>
+<p class="sub">40 human turns. 3,102 lines in 28 files at the end. 5 answered questions across 4 turns. mark Closely steered, 87.2% of lines arrived after the first prompt.</p>
+<p class="howto">How to read this: the top lane is the human, the bottom lane is the artifact, and both share one turn axis. Click any mark or point for that turn.</p>
+<div class="stage">
+<canvas id="dual" width="1000" height="640"></canvas>
+<div class="panel" id="panel">
+<h2>Pick a turn</h2>
+<p>Click any mark in the top lane or any point in the bottom lane to see what that turn introduced, what it removed from earlier turns, how large the artifact stood after it, and whether the agent asked a question there.</p>
+</div>
+</div>
+<div class="legend"><span><span class="shape" style="color:#46689e">●</span>First prompt</span><span><span class="shape" style="color:#2f8f83">■</span>Follow-up prompt</span><span><span class="shape" style="color:#e07a3f">▲</span>Correction prompt</span><span><span class="shape" style="color:#c94f5e">◆</span>Prompt after an error</span><span><span class="shape" style="color:#17222e">●</span>Decision point (agent asked, human answered)</span><span><span class="shape" style="color:#2f8f83">■</span>Area: lines in the artifact after each turn</span></div>
+<p class="callouts">Turn 6 is the biggest dip. The artifact fell by 40 lines after a correction turn that removed 340 lines from earlier turns. The agent asked the human a question on turns 9, 32, 33, and 34.</p>
+<p class="caption">Top lane: one mark per human turn, shaped by its kind. A dot above a mark means the agent asked the human a question there. Bottom lane: lines in the artifact after each turn, from the replay frames. Decision markers show the human answering the agent&#x27;s questions. They do not show who thought of what.</p>
+<p class="method">Turns, kinds, and removals come from the shipped prefix replays, the same snapshots the artifact replay uses. Decision markers come from the receipt&#x27;s own AskUserQuestion parsing, classified the same way and aligned to turns by the same segmentation. Counts and categories only, no question text.</p>
+</main>
+<script id="dual-data" type="application/json">{"turns": [{"turn": 1, "kind": "first", "x": 90.0, "introduced": 507, "removed": 0, "lines_after": 507, "files_after": 3, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 2, "kind": "correction", "x": 112.56410256410257, "introduced": 189, "removed": 0, "lines_after": 696, "files_after": 4, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 3, "kind": "after_error", "x": 135.12820512820514, "introduced": 0, "removed": 0, "lines_after": 696, "files_after": 4, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 4, "kind": "followup", "x": 157.69230769230768, "introduced": 430, "removed": 109, "lines_after": 1017, "files_after": 10, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 5, "kind": "followup", "x": 180.25641025641025, "introduced": 0, "removed": 0, "lines_after": 1017, "files_after": 10, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 6, "kind": "correction", "x": 202.82051282051282, "introduced": 300, "removed": 340, "lines_after": 977, "files_after": 10, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 7, "kind": "followup", "x": 225.3846153846154, "introduced": 11, "removed": 2, "lines_after": 986, "files_after": 10, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 8, "kind": "followup", "x": 247.94871794871796, "introduced": 36, "removed": 12, "lines_after": 1010, "files_after": 12, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 9, "kind": "correction", "x": 270.5128205128205, "introduced": 505, "removed": 2, "lines_after": 1513, "files_after": 13, "decisions": {"calls": 1, "points": 2, "followed": 0, "diverged": 2, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 10, "kind": "correction", "x": 293.0769230769231, "introduced": 1, "removed": 1, "lines_after": 1513, "files_after": 13, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 11, "kind": "followup", "x": 315.64102564102564, "introduced": 0, "removed": 0, "lines_after": 1513, "files_after": 13, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 12, "kind": "followup", "x": 338.2051282051282, "introduced": 9, "removed": 1, "lines_after": 1521, "files_after": 13, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 13, "kind": "correction", "x": 360.7692307692308, "introduced": 569, "removed": 6, "lines_after": 2084, "files_after": 14, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 14, "kind": "followup", "x": 383.3333333333333, "introduced": 706, "removed": 713, "lines_after": 2077, "files_after": 18, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 15, "kind": "followup", "x": 405.8974358974359, "introduced": 4, "removed": 1, "lines_after": 2080, "files_after": 18, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 16, "kind": "correction", "x": 428.46153846153845, "introduced": 10, "removed": 6, "lines_after": 2084, "files_after": 18, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 17, "kind": "followup", "x": 451.025641025641, "introduced": 2, "removed": 2, "lines_after": 2084, "files_after": 18, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 18, "kind": "followup", "x": 473.5897435897436, "introduced": 10, "removed": 4, "lines_after": 2090, "files_after": 18, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 19, "kind": "followup", "x": 496.1538461538462, "introduced": 0, "removed": 0, "lines_after": 2090, "files_after": 18, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 20, "kind": "followup", "x": 518.7179487179487, "introduced": 240, "removed": 0, "lines_after": 2330, "files_after": 20, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 21, "kind": "followup", "x": 541.2820512820513, "introduced": 1, "removed": 1, "lines_after": 2330, "files_after": 20, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 22, "kind": "followup", "x": 563.8461538461538, "introduced": 0, "removed": 0, "lines_after": 2330, "files_after": 20, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 23, "kind": "correction", "x": 586.4102564102564, "introduced": 28, "removed": 1, "lines_after": 2357, "files_after": 20, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 24, "kind": "correction", "x": 608.974358974359, "introduced": 16, "removed": 2, "lines_after": 2371, "files_after": 20, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 25, "kind": "followup", "x": 631.5384615384615, "introduced": 425, "removed": 2, "lines_after": 2794, "files_after": 22, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 26, "kind": "correction", "x": 654.1025641025642, "introduced": 0, "removed": 2, "lines_after": 2792, "files_after": 22, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 27, "kind": "followup", "x": 676.6666666666666, "introduced": 0, "removed": 0, "lines_after": 2792, "files_after": 22, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 28, "kind": "followup", "x": 699.2307692307692, "introduced": 167, "removed": 3, "lines_after": 2956, "files_after": 25, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 29, "kind": "after_error", "x": 721.7948717948718, "introduced": 6, "removed": 6, "lines_after": 2956, "files_after": 25, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 30, "kind": "correction", "x": 744.3589743589744, "introduced": 0, "removed": 0, "lines_after": 2956, "files_after": 25, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 31, "kind": "followup", "x": 766.9230769230769, "introduced": 32, "removed": 21, "lines_after": 2967, "files_after": 25, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 32, "kind": "correction", "x": 789.4871794871794, "introduced": 6, "removed": 5, "lines_after": 2968, "files_after": 25, "decisions": {"calls": 1, "points": 1, "followed": 0, "diverged": 1, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 33, "kind": "correction", "x": 812.051282051282, "introduced": 5, "removed": 5, "lines_after": 2968, "files_after": 25, "decisions": {"calls": 1, "points": 1, "followed": 0, "diverged": 1, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 34, "kind": "followup", "x": 834.6153846153846, "introduced": 6, "removed": 5, "lines_after": 2969, "files_after": 25, "decisions": {"calls": 1, "points": 1, "followed": 0, "diverged": 1, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 35, "kind": "followup", "x": 857.1794871794872, "introduced": 2, "removed": 2, "lines_after": 2969, "files_after": 25, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 36, "kind": "followup", "x": 879.7435897435897, "introduced": 0, "removed": 0, "lines_after": 2969, "files_after": 25, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 37, "kind": "after_error", "x": 902.3076923076924, "introduced": 0, "removed": 0, "lines_after": 2969, "files_after": 25, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 38, "kind": "after_error", "x": 924.8717948717948, "introduced": 2, "removed": 2, "lines_after": 2969, "files_after": 25, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 39, "kind": "followup", "x": 947.4358974358975, "introduced": 53, "removed": 0, "lines_after": 3022, "files_after": 26, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}, {"turn": 40, "kind": "followup", "x": 970.0, "introduced": 80, "removed": 0, "lines_after": 3102, "files_after": 28, "decisions": {"calls": 0, "points": 0, "followed": 0, "diverged": 0, "free_text": 0, "unparseable": 0, "rejected": 0, "dismissed": 0, "errored": 0, "input_unparseable": 0}}], "x0": 67.43589743589743, "max_lines": 3102, "ticks": [0, 1000, 2000, 3000], "kinds": {"first": "First prompt", "followup": "Follow-up prompt", "correction": "Correction prompt", "after_error": "Prompt after an error"}, "colours": {"first": "#46689e", "followup": "#2f8f83", "correction": "#e07a3f", "after_error": "#c94f5e"}, "shapes": {"first": "circle", "followup": "square", "correction": "triangle", "after_error": "diamond"}}</script>
+<script>
+const D = JSON.parse(document.getElementById('dual-data').textContent);
+const canvas = document.getElementById('dual');
+const ctx = canvas.getContext('2d');
+const W = 1000, H = 640;
+const TOP_Y = 120, AXIS_Y = 170, ART_TOP = 210, ART_BOT = 560;
+let selected = null;
+function yLines(v) { return ART_BOT - (v / D.max_lines) * (ART_BOT - ART_TOP); }
+function drawShape(shape, x, y, r) {
+  ctx.beginPath();
+  if (shape === 'circle') { ctx.arc(x, y, r, 0, Math.PI * 2); }
+  else if (shape === 'square') { ctx.rect(x - r, y - r, 2 * r, 2 * r); }
+  else if (shape === 'triangle') {
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x + r, y + r * 0.8);
+    ctx.lineTo(x - r, y + r * 0.8);
+    ctx.closePath();
+  } else if (shape === 'diamond') {
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x + r, y);
+    ctx.lineTo(x, y + r);
+    ctx.lineTo(x - r, y);
+    ctx.closePath();
+  } else {
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+  }
+}
+function drawHuman() {
+  ctx.fillStyle = '#5c6b7a';
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Human', 12, 64);
+  D.turns.forEach(t => {
+    if (t.decisions.calls > 0) {
+      ctx.strokeStyle = '#8a97a5';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(t.x, TOP_Y - 36);
+      ctx.lineTo(t.x, TOP_Y - 14);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(t.x, TOP_Y - 40, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#17222e';
+      ctx.fill();
+    }
+    drawShape(D.shapes[t.kind], t.x, TOP_Y, 10);
+    ctx.fillStyle = D.colours[t.kind];
+    ctx.fill();
+    if (selected === t.turn) {
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#17222e';
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#17222e';
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(t.turn), t.x, TOP_Y + 28);
+  });
+  ctx.textAlign = 'left';
+  ctx.strokeStyle = '#dde4ea';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, AXIS_Y);
+  ctx.lineTo(W, AXIS_Y);
+  ctx.stroke();
+}
+function drawArtifact() {
+  ctx.fillStyle = '#5c6b7a';
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Artifact', 12, ART_TOP - 8);
+  ctx.font = '12px system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  D.ticks.forEach(tick => {
+    const y = yLines(tick);
+    if (tick > 0) {
+      ctx.strokeStyle = '#e8edf2';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(90, y);
+      ctx.lineTo(W - 30, y);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#5c6b7a';
+    ctx.fillText(tick.toLocaleString('en-US'), 84, tick === 0 ? y + 14 : y + 4);
+  });
+  ctx.beginPath();
+  ctx.moveTo(D.x0, yLines(0));
+  let prev = 0;
+  D.turns.forEach(t => {
+    ctx.lineTo(t.x, yLines(prev));
+    ctx.lineTo(t.x, yLines(t.lines_after));
+    prev = t.lines_after;
+  });
+  ctx.lineTo(D.turns[D.turns.length - 1].x, yLines(0));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(47, 143, 131, 0.18)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(D.x0, yLines(0));
+  prev = 0;
+  D.turns.forEach(t => {
+    ctx.lineTo(t.x, yLines(prev));
+    ctx.lineTo(t.x, yLines(t.lines_after));
+    prev = t.lines_after;
+  });
+  ctx.strokeStyle = '#2f8f83';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  const last = D.turns[D.turns.length - 1];
+  ctx.fillStyle = '#17222e';
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(last.lines_after.toLocaleString('en-US') + ' lines in ' + last.files_after + ' files', W - 30, yLines(last.lines_after) - 10);
+  ctx.textAlign = 'left';
+  if (selected !== null) {
+    const t = D.turns[selected - 1];
+    ctx.beginPath();
+    ctx.arc(t.x, yLines(t.lines_after), 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#17222e';
+    ctx.fill();
+  }
+}
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  drawHuman();
+  drawArtifact();
+}
+function decisionText(d) {
+  if (!d.calls) return 'The agent asked no questions on this turn.';
+  let s;
+  if (d.points) {
+    s = 'The agent asked ' + d.points + (d.points === 1 ? ' question' : ' questions') + ' here.';
+  } else {
+    s = 'The agent asked, but no question was answered here.';
+  }
+  if (d.followed) s += ' The human followed the marked recommendation ' + d.followed + (d.followed === 1 ? ' time.' : ' times.');
+  if (d.diverged) s += ' The human picked a listed option ' + d.diverged + (d.diverged === 1 ? ' time.' : ' times.');
+  if (d.free_text) s += ' The human answered in free text ' + d.free_text + (d.free_text === 1 ? ' time.' : ' times.');
+  if (d.unparseable) s += ' ' + d.unparseable + (d.unparseable === 1 ? ' answer' : ' answers') + ' could not be classified.';
+  if (d.rejected) s += ' ' + d.rejected + (d.rejected === 1 ? ' call' : ' calls') + ' refused as posed.';
+  if (d.dismissed) s += ' ' + d.dismissed + (d.dismissed === 1 ? ' call' : ' calls') + ' dismissed.';
+  if (d.errored) s += ' ' + d.errored + (d.errored === 1 ? ' call' : ' calls') + ' errored.';
+  if (d.input_unparseable) s += ' ' + d.input_unparseable + (d.input_unparseable === 1 ? ' call' : ' calls') + ' could not be read.';
+  return s;
+}
+function showPanel(t) {
+  const panel = document.getElementById('panel');
+  panel.innerHTML = '<h2>Turn ' + t.turn + '</h2>'
+    + '<p class="big">' + D.kinds[t.kind] + '</p>'
+    + '<p>Introduced ' + t.introduced.toLocaleString('en-US') + ' lines.</p>'
+    + '<p>Removed ' + t.removed.toLocaleString('en-US') + ' lines from earlier turns.</p>'
+    + '<p>Artifact after this turn: ' + t.lines_after.toLocaleString('en-US') + ' lines in ' + t.files_after + ' files.</p>'
+    + '<p>' + decisionText(t.decisions) + '</p>';
+}
+function turnAt(mx, my) {
+  if (!((my >= 40 && my <= AXIS_Y + 5) || (my >= ART_TOP - 10 && my <= ART_BOT + 10))) return null;
+  let best = null, bestD = 16;
+  D.turns.forEach(t => {
+    const d = Math.abs(t.x - mx);
+    if (d < bestD) { bestD = d; best = t; }
+  });
+  return best;
+}
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (W / rect.width);
+  const my = (e.clientY - rect.top) * (H / rect.height);
+  const t = turnAt(mx, my);
+  if (t) { selected = t.turn; showPanel(t); draw(); }
+});
+draw();
+</script>
+</body></html>
