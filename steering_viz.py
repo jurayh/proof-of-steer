@@ -12,6 +12,7 @@ Usage:
   python3 steering_viz.py --shadow steered.jsonl control.jsonl [--doc doc.receipt.json] -o shadow.html
   python3 steering_viz.py --replay session.jsonl [--receipt receipt.json] -o replay.html
   python3 steering_viz.py --rework session.jsonl [--receipt receipt.json] -o rework-web-3d.html
+  python3 steering_viz.py --dual-timeline session.jsonl [--receipt receipt.json] -o dual-timeline.html
 
 Visual model:
   - Code receipts render as a steering timeline (one block per human-turn
@@ -1446,8 +1447,573 @@ def rework_main(argv):
           f"{graph['edge_count']} edges)")
 
 
+# ---------------------------------------------------------------- dual timeline
+# One shared turn axis, two lanes: the human on top (one shape-coded
+# mark per turn, decision dots above the turns where the agent asked
+# a question) and the artifact below (lines present after each turn,
+# from the replay frames). Vertical alignment is the point: a
+# correction mark lines up with the dip it caused.
+
+DUAL_W = 1000
+DUAL_H = 640
+DUAL_X_GUTTER = 90
+DUAL_X_RIGHT = 970
+DUAL_TOP_Y = 120
+DUAL_AXIS_Y = 170
+DUAL_ART_TOP = 210
+DUAL_ART_BOT = 560
+
+DUAL_KIND_SHAPES = {
+    "first": "circle",
+    "followup": "square",
+    "correction": "triangle",
+    "after_error": "diamond",
+}
+
+DUAL_SHAPE_GLYPHS = {
+    "first": "\u25cf",
+    "followup": "\u25a0",
+    "correction": "\u25b2",
+    "after_error": "\u25c6",
+}
+
+DUAL_KIND_NOUNS = {
+    "first": "first prompt",
+    "followup": "follow-up",
+    "correction": "correction",
+    "after_error": "prompt after an error",
+}
+
+DUAL_CAPTION = (
+    "Top lane: one mark per human turn, shaped by its kind. "
+    "A dot above a mark means the agent asked the human a question "
+    "there. Bottom lane: lines in the artifact after each turn, from "
+    "the replay frames. Decision markers show the human answering "
+    "the agent's questions. They do not show who thought of what.")
+
+DUAL_CAPTION_NO_DECISIONS = (
+    "Top lane: one mark per human turn, shaped by its kind. The "
+    "agent asked no questions in this session, so there are no "
+    "decision markers. Bottom lane: lines in the artifact after "
+    "each turn, from the replay frames.")
+
+DUAL_METHOD = (
+    "Turns, kinds, and removals come from the shipped prefix "
+    "replays, the same snapshots the artifact replay uses. Decision "
+    "markers come from the receipt's own AskUserQuestion parsing, "
+    "classified the same way and aligned to turns by the same "
+    "segmentation. Counts and categories only, no question text.")
+
+
+def _dual_zero_decisions():
+    return {"calls": 0, "points": 0, "followed": 0, "diverged": 0,
+            "free_text": 0, "unparseable": 0, "rejected": 0,
+            "dismissed": 0, "errored": 0, "input_unparseable": 0}
+
+
+def dual_x(turn, turns):
+    """Shared horizontal position of one turn, used by both lanes so
+    a mark in the top lane lines up exactly with the artifact state
+    below it."""
+    if turns <= 1:
+        return (DUAL_X_GUTTER + DUAL_X_RIGHT) / 2
+    return (DUAL_X_GUTTER
+            + (turn - 1) / (turns - 1) * (DUAL_X_RIGHT - DUAL_X_GUTTER))
+
+
+def dual_timeline_decisions(session_path):
+    """Attribute the receipt's AskUserQuestion events to human turns.
+
+    Re-walks the transcript with the same segmentation parse_session
+    uses (a user text record opens a segment), pairing each call with
+    its tool result by tool use id, and classifies each call with the
+    receipt's own _classify_decision_call. The result is checked
+    against the receipt's own decision_events (same calls, same
+    decision points), so a drift in either parser fails loudly
+    instead of misplacing a marker. Codex sessions have no
+    AskUserQuestion events by construction, so they return zeros."""
+    import steering_receipt as sr
+    empty = {"turns": {}, "total_points": 0, "total_calls": 0,
+             "turns_with_decisions": []}
+    if sr.detect_format(session_path) == "codex":
+        return empty
+    segments, meta = sr.parse_session(session_path)
+    idx_to_turn = {s["idx"]: k + 1 for k, s in
+                   enumerate(s for s in segments if not s.get("pre_prompt"))}
+    calls = {}
+    call_seg = {}
+    results = {}
+    cur = None
+    seg_count = 0
+    for line in Path(session_path).read_text(encoding="utf-8",
+                                            errors="replace").splitlines():
+        try:
+            r = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        msg = r.get("message") or {}
+        if r.get("type") == "user":
+            content = msg.get("content")
+            blocks = content if isinstance(content, list) else (
+                [{"type": "text", "text": content}]
+                if isinstance(content, str) else [])
+            for blk in blocks:
+                if isinstance(blk, dict) and blk.get("type") == "tool_result":
+                    results[blk.get("tool_use_id")] = (
+                        sr._decision_result_text(blk.get("content")),
+                        bool(blk.get("is_error")))
+            texts = [b.get("text", "") for b in blocks
+                     if isinstance(b, dict) and b.get("type") == "text"]
+            joined = "\n".join(texts).strip()
+            if joined:
+                if r.get("isMeta") or joined.startswith(
+                        ("<command-", "<local-command", "Caveat:")):
+                    continue
+                cur = seg_count
+                seg_count += 1
+        if r.get("type") == "assistant":
+            if cur is None:
+                cur = seg_count
+                seg_count += 1
+            for blk in [b for b in (msg.get("content") or [])
+                        if isinstance(b, dict)]:
+                if blk.get("type") == "tool_use" and \
+                        blk.get("name") == "AskUserQuestion":
+                    cid = blk.get("id")
+                    calls[cid] = blk.get("input") or {}
+                    if cid not in call_seg:
+                        call_seg[cid] = cur
+    if seg_count != len(segments):
+        raise ValueError("dual timeline decision walk opened "
+                         f"{seg_count} segments, the receipt parser "
+                         f"opened {len(segments)}")
+    if len(calls) != len(meta["decision_events"]):
+        raise ValueError("dual timeline decision walk found "
+                         f"{len(calls)} AskUserQuestion calls, the "
+                         "receipt parser found "
+                         f"{len(meta['decision_events'])}")
+    if [c for c in calls.values()] != \
+            [e[0] for e in meta["decision_events"]]:
+        raise ValueError("dual timeline decision walk disagrees with "
+                         "the receipt parser on the calls themselves")
+    per_turn = {}
+    total_points = 0
+    for cid, call_input in calls.items():
+        res = results.get(cid)
+        cls = sr._classify_decision_call(
+            call_input, res[0] if res else None, res[1] if res else False)
+        turn = idx_to_turn.get(call_seg[cid])
+        if turn is None:
+            continue
+        d = per_turn.setdefault(turn, _dual_zero_decisions())
+        d["calls"] += 1
+        if cls["status"] == "answered":
+            for q in cls["questions"]:
+                d["points"] += 1
+                total_points += 1
+                if q["class"] == "followed_recommendation":
+                    d["followed"] += 1
+                elif q["class"] == "diverged_to_listed":
+                    d["diverged"] += 1
+                elif q["class"] == "free_text":
+                    d["free_text"] += 1
+                else:
+                    d["unparseable"] += 1
+        elif cls["status"] in d:
+            d[cls["status"]] += 1
+    receipt_points = sr.build_decisions(
+        meta["decision_events"])["decision_points"]
+    if total_points != receipt_points:
+        raise ValueError("dual timeline decision walk counted "
+                         f"{total_points} decision points, the receipt "
+                         f"counts {receipt_points}")
+    return {"turns": per_turn, "total_points": total_points,
+            "total_calls": len(calls),
+            "turns_with_decisions": sorted(per_turn)}
+
+
+def _join_turns(turns):
+    names = [str(t) for t in turns]
+    if len(names) == 1:
+        return "turn " + names[0]
+    if len(names) == 2:
+        return "turns " + " and ".join(names)
+    return "turns " + ", ".join(names[:-1]) + ", and " + names[-1]
+
+
+def dual_timeline_data(session_path):
+    """One row per human turn, carrying both lanes: the human's mark
+    (kind, lines introduced, lines removed from earlier turns) and
+    the artifact's state after the turn (lines and files present),
+    plus the turn's decision counts. Both lanes share one x per turn.
+    The story callout is computed from the rows, never hardcoded."""
+    graph = rework_graph(session_path)
+    frames, fmeta = replay_frames(session_path)
+    turns = graph["turns"]
+    if len(frames) != turns + 1:
+        raise ValueError("dual timeline: the replay produced "
+                         f"{len(frames)} frames for {turns} turns")
+    decisions = dual_timeline_decisions(session_path)
+    nodes = {n["turn"]: n for n in graph["nodes"]}
+    step = ((DUAL_X_RIGHT - DUAL_X_GUTTER) / (turns - 1)
+            if turns > 1 else 0)
+    rows = []
+    for t in range(1, turns + 1):
+        n = nodes[t]
+        rows.append({"turn": t, "kind": n["kind"], "x": dual_x(t, turns),
+                     "introduced": n["introduced"],
+                     "removed": n["removed_from_earlier"],
+                     "lines_after": frames[t]["lines"],
+                     "files_after": frames[t]["files"],
+                     "decisions": decisions["turns"].get(
+                         t, _dual_zero_decisions())})
+    final_lines = rows[-1]["lines_after"] if rows else 0
+    final_files = rows[-1]["files_after"] if rows else 0
+    if final_lines != fmeta["final_lines"] or \
+            final_lines != graph["final_lines"]:
+        raise ValueError("dual timeline: final lines disagree between "
+                         "the replay frames and the rework graph")
+    if final_files != fmeta["final_files"]:
+        raise ValueError("dual timeline: final file count disagrees "
+                         "with the replay frames")
+    drops = []
+    for i, row in enumerate(rows):
+        before = rows[i - 1]["lines_after"] if i else 0
+        drops.append((row["lines_after"] - before, row["turn"]))
+    drop, drop_turn = min(drops)
+    if drop < 0:
+        drow = rows[drop_turn - 1]
+        callout = (f"Turn {drop_turn} is the biggest dip. The artifact "
+                   f"fell by {abs(drop):,} lines after a "
+                   f"{DUAL_KIND_NOUNS[drow['kind']]} turn that removed "
+                   f"{drow['removed']:,} lines from earlier turns.")
+    else:
+        callout = ("The artifact never shrank after a turn. Every turn "
+                   "left it at least as large as before.")
+    if decisions["turns_with_decisions"]:
+        callout += (" The agent asked the human a question on "
+                    + _join_turns(decisions["turns_with_decisions"])
+                    + ".")
+    else:
+        callout += " The agent asked no questions in this session."
+    max_lines = max([r["lines_after"] for r in rows] or [1])
+    tick_step = 1000 if max_lines <= 5000 else 5000
+    ticks = list(range(0, max_lines + 1, tick_step))
+    return {"turns": rows, "x0": dual_x(1, turns) - step,
+            "max_lines": max_lines, "ticks": ticks,
+            "final_lines": final_lines, "final_files": final_files,
+            "total_points": decisions["total_points"],
+            "total_calls": decisions["total_calls"],
+            "turns_with_decisions": decisions["turns_with_decisions"],
+            "biggest_drop": {"turn": drop_turn, "net": drop},
+            "callout": callout,
+            "has_decisions": bool(decisions["turns_with_decisions"])}
+
+
+def dual_timeline_html(data, meta):
+    """Build the dual timeline page. All data is embedded as JSON.
+    The page has no external assets, plays nothing on load, and is
+    driven by click for detail."""
+    title = meta.get("title", "Dual timeline")
+    subtitle = meta.get("subtitle", "")
+    caption = (DUAL_CAPTION if data["has_decisions"]
+               else DUAL_CAPTION_NO_DECISIONS)
+    payload = json.dumps({"turns": data["turns"], "x0": data["x0"],
+                          "max_lines": data["max_lines"],
+                          "ticks": data["ticks"],
+                          "kinds": REWORK_KIND_LABELS,
+                          "colours": REWORK_KIND_COLOURS,
+                          "shapes": DUAL_KIND_SHAPES})
+    payload = payload.replace("<", "\\u003c")
+    css = """
+body{font-family:system-ui,-apple-system,sans-serif;color:#17222e;background:#f6f8fa;margin:0;padding:24px}
+main{max-width:1000px;margin:0 auto;background:#fff;border:1px solid #dde4ea;border-radius:8px;padding:24px}
+h1{font-size:22px;margin:0 0 4px} .sub{color:#5c6b7a;margin:0 0 16px}
+.howto{font-size:15px;margin:0 0 12px}
+.stage{display:flex;gap:20px;flex-wrap:wrap}
+canvas{background:#fbfcfe;border:1px solid #dde4ea;border-radius:8px;cursor:pointer;flex:1;min-width:320px}
+.panel{width:280px;flex:none;border:1px solid #dde4ea;border-radius:8px;padding:16px;height:fit-content}
+.panel h2{font-size:17px;margin:0 0 8px}
+.panel p{font-size:14px;line-height:1.6;margin:6px 0}
+.panel .big{font-size:24px;font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12.5px;color:#5c6b7a;margin:14px 0}
+.legend .shape{font-size:15px;margin-right:6px}
+.callouts,.caption,.method{font-size:14px;line-height:1.5;color:#37424e}
+.method{color:#5c6b7a}
+"""
+    legend = "".join(
+        f"<span><span class=\"shape\" style=\"color:"
+        f"{REWORK_KIND_COLOURS[k]}\">{DUAL_SHAPE_GLYPHS[k]}</span>"
+        f"{REWORK_KIND_LABELS[k]}</span>"
+        for k in REWORK_LANE_ORDER)
+    if data["has_decisions"]:
+        legend += ("<span><span class=\"shape\" style=\"color:#17222e\">"
+                   "\u25cf</span>Decision point (agent asked, human "
+                   "answered)</span>")
+    legend += ("<span><span class=\"shape\" style=\"color:#2f8f83\">"
+               "\u25a0</span>Area: lines in the artifact after each "
+               "turn</span>")
+    body = f"""<main>
+<h1>{esc(title)}</h1>
+<p class="sub">{esc(subtitle)}</p>
+<p class="howto">How to read this: the top lane is the human, the bottom lane is the artifact, and both share one turn axis. Click any mark or point for that turn.</p>
+<div class="stage">
+<canvas id="dual" width="{DUAL_W}" height="{DUAL_H}"></canvas>
+<div class="panel" id="panel">
+<h2>Pick a turn</h2>
+<p>Click any mark in the top lane or any point in the bottom lane to see what that turn introduced, what it removed from earlier turns, how large the artifact stood after it, and whether the agent asked a question there.</p>
+</div>
+</div>
+<div class="legend">{legend}</div>
+<p class="callouts">{esc(data["callout"])}</p>
+<p class="caption">{esc(caption)}</p>
+<p class="method">{esc(DUAL_METHOD)}</p>
+</main>
+"""
+    js = """
+const D = JSON.parse(document.getElementById('dual-data').textContent);
+const canvas = document.getElementById('dual');
+const ctx = canvas.getContext('2d');
+const W = 1000, H = 640;
+const TOP_Y = 120, AXIS_Y = 170, ART_TOP = 210, ART_BOT = 560;
+let selected = null;
+function yLines(v) { return ART_BOT - (v / D.max_lines) * (ART_BOT - ART_TOP); }
+function drawShape(shape, x, y, r) {
+  ctx.beginPath();
+  if (shape === 'circle') { ctx.arc(x, y, r, 0, Math.PI * 2); }
+  else if (shape === 'square') { ctx.rect(x - r, y - r, 2 * r, 2 * r); }
+  else if (shape === 'triangle') {
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x + r, y + r * 0.8);
+    ctx.lineTo(x - r, y + r * 0.8);
+    ctx.closePath();
+  } else if (shape === 'diamond') {
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x + r, y);
+    ctx.lineTo(x, y + r);
+    ctx.lineTo(x - r, y);
+    ctx.closePath();
+  } else {
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+  }
+}
+function drawHuman() {
+  ctx.fillStyle = '#5c6b7a';
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Human', 12, 64);
+  D.turns.forEach(t => {
+    if (t.decisions.calls > 0) {
+      ctx.strokeStyle = '#8a97a5';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(t.x, TOP_Y - 36);
+      ctx.lineTo(t.x, TOP_Y - 14);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(t.x, TOP_Y - 40, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#17222e';
+      ctx.fill();
+    }
+    drawShape(D.shapes[t.kind], t.x, TOP_Y, 10);
+    ctx.fillStyle = D.colours[t.kind];
+    ctx.fill();
+    if (selected === t.turn) {
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#17222e';
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#17222e';
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(t.turn), t.x, TOP_Y + 28);
+  });
+  ctx.textAlign = 'left';
+  ctx.strokeStyle = '#dde4ea';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, AXIS_Y);
+  ctx.lineTo(W, AXIS_Y);
+  ctx.stroke();
+}
+function drawArtifact() {
+  ctx.fillStyle = '#5c6b7a';
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Artifact', 12, ART_TOP - 8);
+  ctx.font = '12px system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  D.ticks.forEach(tick => {
+    const y = yLines(tick);
+    if (tick > 0) {
+      ctx.strokeStyle = '#e8edf2';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(90, y);
+      ctx.lineTo(W - 30, y);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#5c6b7a';
+    ctx.fillText(tick.toLocaleString('en-US'), 84, tick === 0 ? y + 14 : y + 4);
+  });
+  ctx.beginPath();
+  ctx.moveTo(D.x0, yLines(0));
+  let prev = 0;
+  D.turns.forEach(t => {
+    ctx.lineTo(t.x, yLines(prev));
+    ctx.lineTo(t.x, yLines(t.lines_after));
+    prev = t.lines_after;
+  });
+  ctx.lineTo(D.turns[D.turns.length - 1].x, yLines(0));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(47, 143, 131, 0.18)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(D.x0, yLines(0));
+  prev = 0;
+  D.turns.forEach(t => {
+    ctx.lineTo(t.x, yLines(prev));
+    ctx.lineTo(t.x, yLines(t.lines_after));
+    prev = t.lines_after;
+  });
+  ctx.strokeStyle = '#2f8f83';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  const last = D.turns[D.turns.length - 1];
+  ctx.fillStyle = '#17222e';
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(last.lines_after.toLocaleString('en-US') + ' lines in ' + last.files_after + ' files', W - 30, yLines(last.lines_after) - 10);
+  ctx.textAlign = 'left';
+  if (selected !== null) {
+    const t = D.turns[selected - 1];
+    ctx.beginPath();
+    ctx.arc(t.x, yLines(t.lines_after), 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#17222e';
+    ctx.fill();
+  }
+}
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  drawHuman();
+  drawArtifact();
+}
+function decisionText(d) {
+  if (!d.calls) return 'The agent asked no questions on this turn.';
+  let s;
+  if (d.points) {
+    s = 'The agent asked ' + d.points + (d.points === 1 ? ' question' : ' questions') + ' here.';
+  } else {
+    s = 'The agent asked, but no question was answered here.';
+  }
+  if (d.followed) s += ' The human followed the marked recommendation ' + d.followed + (d.followed === 1 ? ' time.' : ' times.');
+  if (d.diverged) s += ' The human picked a listed option ' + d.diverged + (d.diverged === 1 ? ' time.' : ' times.');
+  if (d.free_text) s += ' The human answered in free text ' + d.free_text + (d.free_text === 1 ? ' time.' : ' times.');
+  if (d.unparseable) s += ' ' + d.unparseable + (d.unparseable === 1 ? ' answer' : ' answers') + ' could not be classified.';
+  if (d.rejected) s += ' ' + d.rejected + (d.rejected === 1 ? ' call' : ' calls') + ' refused as posed.';
+  if (d.dismissed) s += ' ' + d.dismissed + (d.dismissed === 1 ? ' call' : ' calls') + ' dismissed.';
+  if (d.errored) s += ' ' + d.errored + (d.errored === 1 ? ' call' : ' calls') + ' errored.';
+  if (d.input_unparseable) s += ' ' + d.input_unparseable + (d.input_unparseable === 1 ? ' call' : ' calls') + ' could not be read.';
+  return s;
+}
+function showPanel(t) {
+  const panel = document.getElementById('panel');
+  panel.innerHTML = '<h2>Turn ' + t.turn + '</h2>'
+    + '<p class="big">' + D.kinds[t.kind] + '</p>'
+    + '<p>Introduced ' + t.introduced.toLocaleString('en-US') + ' lines.</p>'
+    + '<p>Removed ' + t.removed.toLocaleString('en-US') + ' lines from earlier turns.</p>'
+    + '<p>Artifact after this turn: ' + t.lines_after.toLocaleString('en-US') + ' lines in ' + t.files_after + ' files.</p>'
+    + '<p>' + decisionText(t.decisions) + '</p>';
+}
+function turnAt(mx, my) {
+  if (!((my >= 40 && my <= AXIS_Y + 5) || (my >= ART_TOP - 10 && my <= ART_BOT + 10))) return null;
+  let best = null, bestD = 16;
+  D.turns.forEach(t => {
+    const d = Math.abs(t.x - mx);
+    if (d < bestD) { bestD = d; best = t; }
+  });
+  return best;
+}
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (W / rect.width);
+  const my = (e.clientY - rect.top) * (H / rect.height);
+  const t = turnAt(mx, my);
+  if (t) { selected = t.turn; showPanel(t); draw(); }
+});
+draw();
+"""
+    return ("<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">\n"
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
+            f"<title>{esc(title)}</title>\n<style>{css}</style></head><body>"
+            + body +
+            f"<script id=\"dual-data\" type=\"application/json\">{payload}</script>\n"
+            f"<script>{js}</script>\n</body></html>")
+
+
+def dual_timeline_main(argv):
+    """CLI: steerprint --dual-timeline session.jsonl [--receipt receipt.json]
+    -o dual-timeline.html. Both lanes come from the shipped prefix
+    replays and the receipt's own decision parsing; the receipt, when
+    given, supplies only the header label, mark, and post-first share."""
+    args = list(argv)
+    out_path = Path("dual-timeline.html")
+    if "-o" in args:
+        out_path = Path(args[args.index("-o") + 1])
+    receipt_path = None
+    if "--receipt" in args:
+        receipt_path = args[args.index("--receipt") + 1]
+    pos = []
+    skip_next = False
+    for a in args:
+        if skip_next:
+            skip_next = False
+            continue
+        if a in ("-o", "--receipt"):
+            skip_next = True
+            continue
+        if a.startswith("-"):
+            continue
+        pos.append(a)
+    if len(pos) != 1:
+        sys.exit("--dual-timeline takes exactly one session")
+    data = dual_timeline_data(Path(pos[0]))
+    title = "Dual timeline"
+    subtitle = (f"{len(data['turns'])} human turns. "
+                f"{data['final_lines']:,} lines in "
+                f"{data['final_files']} files at the end.")
+    if data["total_points"]:
+        subtitle += (f" {data['total_points']} answered questions across "
+                     f"{len(data['turns_with_decisions'])} turns.")
+    else:
+        subtitle += " The agent asked no questions."
+    if receipt_path:
+        r = json.loads(Path(receipt_path).read_text(encoding="utf-8"))
+        title = f"Dual timeline: {r.get('label', 'session')}"
+        mark = (r.get("mark") or {}).get("category")
+        pct = headline_pct(r.get("git_join") or {})
+        extra = []
+        if mark:
+            extra.append(f"mark {mark}")
+        if pct is not None:
+            extra.append(f"{pct}% of lines arrived after the first prompt")
+        if extra:
+            subtitle += " " + ", ".join(extra) + "."
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(dual_timeline_html(data, {"title": title,
+                                                  "subtitle": subtitle}),
+                        encoding="utf-8")
+    print(f"wrote dual timeline {out_path} "
+          f"({out_path.stat().st_size:,} bytes, "
+          f"{len(data['turns'])} turns, "
+          f"{data['total_points']} decision points)")
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if "--dual-timeline" in argv:
+        dual_timeline_main(argv)
+        return
     if "--rework" in argv:
         rework_main(argv)
         return
