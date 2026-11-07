@@ -13,6 +13,7 @@ Usage:
   python3 steering_viz.py --replay session.jsonl [--receipt receipt.json] -o replay.html
   python3 steering_viz.py --rework session.jsonl [--receipt receipt.json] -o rework-web-3d.html
   python3 steering_viz.py --dual-timeline session.jsonl [--receipt receipt.json] -o dual-timeline.html
+  python3 steering_viz.py --making-of making-of-dual-timeline.json -o making-of-dual-timeline.html
 
 Visual model:
   - Code receipts render as a steering timeline (one block per human-turn
@@ -28,6 +29,7 @@ Visual model:
 No prompt text exists in receipts and none is rendered.
 """
 import html, json, sys
+from datetime import datetime
 from collections import Counter
 from pathlib import Path
 
@@ -2009,8 +2011,286 @@ def dual_timeline_main(argv):
           f"{data['total_points']} decision points)")
 
 
+MAKING_W = 1000
+MAKING_H = 520
+MAKING_LANES = ["Yuriy", "Levko", "Subagent"]
+MAKING_LANE_COLOURS = {"Yuriy": "#46689e", "Levko": "#2f8f83",
+                        "Subagent": "#e07a3f"}
+MAKING_CAPTION = ("This is a hand-built record of one chat, not a "
+                  "computed receipt. Each step cites the message that "
+                  "records it, and only steps found in the transcript "
+                  "are shown. Nothing here was measured from a session.")
+MAKING_ACTORS = ("Yuriy", "Levko", "Subagent")
+
+
+def making_of_load(path):
+    """Read a making-of JSON file: a list of steps, each with actor,
+    action, time, and evidence. Finished steps carry an ISO time.
+    The final open step carries no time and unfinished true."""
+    steps = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(steps, list) or not steps:
+        raise ValueError("making-of data must be a non-empty list")
+    for s in steps:
+        if s.get("actor") not in MAKING_ACTORS:
+            raise ValueError("unknown actor: %r" % (s.get("actor"),))
+        for key in ("action", "evidence"):
+            if not s.get(key):
+                raise ValueError("step missing %s: %r" % (key, s))
+        if not s.get("unfinished") and not s.get("time"):
+            raise ValueError("finished step missing time: %r" % (s,))
+    return steps
+
+
+def making_of_time_display(iso):
+    """Nov 5, 11:06 AM from an ISO time with a fixed offset."""
+    dt = datetime.fromisoformat(iso)
+    return dt.strftime("%b %-d, %-I:%M %p")
+
+
+def making_of_data(steps):
+    """Layout for the chain: one column per step, time left to right,
+    one lane per actor. Handoffs run step to step in time order.
+    The callout is computed from the step times, not written by
+    hand: the build minutes and the wait for the push approval."""
+    n = len(steps)
+    span = MAKING_W - 250
+    step_x = span / (n - 1) if n > 1 else 0
+    lane_y = {a: 110 + 130 * i for i, a in enumerate(MAKING_LANES)}
+    rows = []
+    for i, s in enumerate(steps):
+        rows.append({
+            "index": i,
+            "actor": s["actor"],
+            "action": s["action"],
+            "time": s.get("time"),
+            "display": (making_of_time_display(s["time"])
+                        if s.get("time") else "not yet"),
+            "evidence": s["evidence"],
+            "gate": bool(s.get("gate")),
+            "unfinished": bool(s.get("unfinished")),
+            "x": round(150 + i * step_x),
+            "y": lane_y[s["actor"]],
+            "colour": MAKING_LANE_COLOURS[s["actor"]],
+        })
+    timed = [r for r in rows if r["time"]]
+    callout = ""
+    if len(timed) >= 7:
+        build = (datetime.fromisoformat(timed[4]["time"])
+                 - datetime.fromisoformat(timed[3]["time"]))
+        wait = (datetime.fromisoformat(timed[6]["time"])
+                - datetime.fromisoformat(timed[5]["time"]))
+        minutes = int(round(build.total_seconds() / 60))
+        hours = int(wait.total_seconds() // 3600)
+        callout = (f"The subagent built the figure in {minutes} minutes. "
+                   f"The push approval came {hours} hours after "
+                   f"verification. The demos link is still open.")
+    return {"steps": rows, "callout": callout}
+
+
+def making_of_html(data, meta):
+    """Build the making-of page. All data is embedded as JSON. The
+    page has no external assets, plays nothing on load, and is
+    driven by click for detail."""
+    title = meta.get("title", "Making of the dual timeline")
+    subtitle = meta.get("subtitle", "")
+    payload = json.dumps({"steps": data["steps"]})
+    payload = payload.replace("<", "\\u003c")
+    css = """
+body{font-family:system-ui,-apple-system,sans-serif;color:#17222e;background:#f6f8fa;margin:0;padding:24px}
+main{max-width:1000px;margin:0 auto;background:#fff;border:1px solid #dde4ea;border-radius:8px;padding:24px}
+h1{font-size:22px;margin:0 0 4px} .sub{color:#5c6b7a;margin:0 0 16px}
+.howto{font-size:15px;margin:0 0 12px}
+.stage{display:flex;gap:20px;flex-wrap:wrap}
+canvas{background:#fbfcfe;border:1px solid #dde4ea;border-radius:8px;cursor:pointer;flex:1;min-width:320px}
+.panel{width:280px;flex:none;border:1px solid #dde4ea;border-radius:8px;padding:16px;height:fit-content}
+.panel h2{font-size:17px;margin:0 0 8px}
+.panel p{font-size:14px;line-height:1.6;margin:6px 0}
+.panel .big{font-size:24px;font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12.5px;color:#5c6b7a;margin:14px 0}
+.legend .shape{font-size:15px;margin-right:6px}
+.callouts,.caption,.method{font-size:14px;line-height:1.5;color:#37424e}
+.method{color:#5c6b7a}
+"""
+    legend = "".join(
+        f"<span><span class=\"shape\" style=\"color:"
+        f"{MAKING_LANE_COLOURS[a]}\">\u25cf</span>{a}</span>"
+        for a in MAKING_LANES)
+    legend += ("<span><span class=\"shape\" style=\"color:#17222e\">"
+               "\u25c7</span>Approval gate (human)</span>")
+    legend += ("<span><span class=\"shape\" style=\"color:#8a97a5\">"
+               "\u25cb</span>Still open</span>")
+    body = f"""<main>
+<h1>{esc(title)}</h1>
+<p class="sub">{esc(subtitle)}</p>
+<p class="howto">How to read this: time runs left to right, one column per step, one lane per actor. A diamond is an approval gate. An open outline is a step that has not happened yet. Click any node for that step.</p>
+<div class="stage">
+<canvas id="making" width="{MAKING_W}" height="{MAKING_H}"></canvas>
+<div class="panel" id="panel">
+<h2>Pick a step</h2>
+<p>Click any node to see what happened at that step, when it happened, and the message that records it.</p>
+</div>
+</div>
+<div class="legend">{legend}</div>
+<p class="callouts">{esc(data["callout"])}</p>
+<p class="caption">{esc(MAKING_CAPTION)}</p>
+</main>
+"""
+    js = """
+const D = JSON.parse(document.getElementById('making-data').textContent);
+const canvas = document.getElementById('making');
+const ctx = canvas.getContext('2d');
+const W = 1000, H = 520;
+const LANE_Y = {Yuriy: 110, Levko: 240, Subagent: 370};
+let selected = null;
+function drawLanes() {
+  ctx.font = '13px system-ui, sans-serif';
+  Object.keys(LANE_Y).forEach(a => {
+    const y = LANE_Y[a];
+    ctx.fillStyle = '#5c6b7a';
+    ctx.textAlign = 'left';
+    ctx.fillText(a, 12, y + 5);
+    ctx.strokeStyle = '#eef2f5';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(100, y);
+    ctx.lineTo(W - 20, y);
+    ctx.stroke();
+  });
+}
+function drawArrow(x0, y0, x1, y1) {
+  ctx.strokeStyle = '#8a97a5';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+  const ang = Math.atan2(y1 - y0, x1 - x0);
+  ctx.fillStyle = '#8a97a5';
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - 10 * Math.cos(ang - 0.4), y1 - 10 * Math.sin(ang - 0.4));
+  ctx.lineTo(x1 - 10 * Math.cos(ang + 0.4), y1 - 10 * Math.sin(ang + 0.4));
+  ctx.closePath();
+  ctx.fill();
+}
+function drawNode(s) {
+  ctx.beginPath();
+  if (s.gate) {
+    ctx.moveTo(s.x, s.y - 14);
+    ctx.lineTo(s.x + 14, s.y);
+    ctx.lineTo(s.x, s.y + 14);
+    ctx.lineTo(s.x - 14, s.y);
+    ctx.closePath();
+    ctx.fillStyle = s.colour;
+    ctx.fill();
+  } else if (s.unfinished) {
+    ctx.arc(s.x, s.y, 11, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = s.colour;
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else {
+    ctx.arc(s.x, s.y, 11, 0, Math.PI * 2);
+    ctx.fillStyle = s.colour;
+    ctx.fill();
+  }
+  if (selected === s.index) {
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#17222e';
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#17222e';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  const labelW = ctx.measureText(s.display).width;
+  ctx.fillStyle = '#fbfcfe';
+  ctx.fillRect(s.x - labelW / 2 - 3, s.y + 18, labelW + 6, 16);
+  ctx.fillStyle = '#17222e';
+  ctx.fillText(s.display, s.x, s.y + 30);
+}
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  drawLanes();
+  const steps = D.steps;
+  for (let i = 1; i < steps.length; i++) {
+    drawArrow(steps[i - 1].x, steps[i - 1].y, steps[i].x, steps[i].y);
+  }
+  steps.forEach(drawNode);
+  ctx.fillStyle = '#5c6b7a';
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Nov 5, 2026', 12, 490);
+}
+function showPanel(s) {
+  const panel = document.getElementById('panel');
+  const when = s.unfinished ? 'No time yet. This step is still open.'
+    : s.display + ', Nov 5, 2026';
+  const gate = s.gate ? '<p><b>Approval gate.</b> The human held this step.</p>' : '';
+  panel.innerHTML = '<h2>' + s.action + '</h2>'
+    + '<p class="big">' + s.actor + '</p>'
+    + '<p>' + when + '</p>'
+    + gate
+    + '<p>' + s.evidence + '</p>';
+}
+canvas.addEventListener('click', function(e) {
+  const r = canvas.getBoundingClientRect();
+  const mx = (e.clientX - r.left) * (W / r.width);
+  const my = (e.clientY - r.top) * (H / r.height);
+  let best = null, bestD = 20;
+  D.steps.forEach(s => {
+    const d = Math.hypot(s.x - mx, s.y - my);
+    if (d < bestD) { bestD = d; best = s; }
+  });
+  if (best) { selected = best.index; draw(); showPanel(best); }
+});
+draw();
+"""
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>{esc(title)}</title><style>{css}</style></head><body>
+<script id="making-data" type="application/json">{payload}</script>
+{body}
+<script>{js}</script>
+</body></html>
+"""
+
+
+def making_of_main(argv):
+    """CLI: steerprint --making-of making-of-dual-timeline.json
+    -o making-of-dual-timeline.html. The JSON is a hand-built list
+    of steps from the chat transcript, not a computed receipt."""
+    args = list(argv)
+    out_path = Path("making-of-dual-timeline.html")
+    if "-o" in args:
+        out_path = Path(args[args.index("-o") + 1])
+    pos = [a for a in args
+           if not a.startswith("-") and a != str(out_path)]
+    if len(pos) != 1:
+        sys.exit("--making-of takes exactly one JSON data file")
+    steps = making_of_load(Path(pos[0]))
+    data = making_of_data(steps)
+    finished = [s for s in steps if not s.get("unfinished")]
+    title = "Making of the dual timeline"
+    subtitle = (f"How the dual timeline was made. {len(steps)} steps "
+                f"by one human and two AIs, Nov 5, 2026. "
+                f"{len(finished)} done, "
+                f"{len(steps) - len(finished)} still open.")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(making_of_html(data, {"title": title,
+                                              "subtitle": subtitle}),
+                        encoding="utf-8")
+    print(f"wrote making of {out_path} "
+          f"({out_path.stat().st_size:,} bytes, "
+          f"{len(steps)} steps)")
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if "--making-of" in argv:
+        making_of_main(argv)
+        return
     if "--dual-timeline" in argv:
         dual_timeline_main(argv)
         return
