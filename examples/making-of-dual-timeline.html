@@ -1,0 +1,148 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>Making of the dual timeline</title><style>
+body{font-family:system-ui,-apple-system,sans-serif;color:#17222e;background:#f6f8fa;margin:0;padding:24px}
+main{max-width:1000px;margin:0 auto;background:#fff;border:1px solid #dde4ea;border-radius:8px;padding:24px}
+h1{font-size:22px;margin:0 0 4px} .sub{color:#5c6b7a;margin:0 0 16px}
+.howto{font-size:15px;margin:0 0 12px}
+.stage{display:flex;gap:20px;flex-wrap:wrap}
+canvas{background:#fbfcfe;border:1px solid #dde4ea;border-radius:8px;cursor:pointer;flex:1;min-width:320px}
+.panel{width:280px;flex:none;border:1px solid #dde4ea;border-radius:8px;padding:16px;height:fit-content}
+.panel h2{font-size:17px;margin:0 0 8px}
+.panel p{font-size:14px;line-height:1.6;margin:6px 0}
+.panel .big{font-size:24px;font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12.5px;color:#5c6b7a;margin:14px 0}
+.legend .shape{font-size:15px;margin-right:6px}
+.callouts,.caption,.method{font-size:14px;line-height:1.5;color:#37424e}
+.method{color:#5c6b7a}
+</style></head><body>
+<script id="making-data" type="application/json">{"steps": [{"index": 0, "actor": "Yuriy", "action": "Proposes the idea", "time": "2026-11-05T11:06:39-08:00", "display": "Nov 5, 11:06 AM", "evidence": "Yuriy asks in this chat for visualizations of how an artifact is shaped over time by user and agent.", "gate": false, "unfinished": false, "x": 150, "y": 110, "colour": "#46689e"}, {"index": 1, "actor": "Yuriy", "action": "Picks the dual timeline", "time": "2026-11-05T11:10:18-08:00", "display": "Nov 5, 11:10 AM", "evidence": "Yuriy taps Build the dual timeline, choosing it from four options Levko offered.", "gate": true, "unfinished": false, "x": 244, "y": 110, "colour": "#46689e"}, {"index": 2, "actor": "Levko", "action": "Accepts the build and briefs a subagent", "time": "2026-11-05T11:10:40-08:00", "display": "Nov 5, 11:10 AM", "evidence": "Levko replies On it, describing the two lanes and the decision check the build must settle first. The subagent is running by 11:12:08.", "gate": false, "unfinished": false, "x": 338, "y": 240, "colour": "#2f8f83"}, {"index": 3, "actor": "Subagent", "action": "Builds the dual timeline", "time": "2026-11-05T11:12:08-08:00", "display": "Nov 5, 11:12 AM", "evidence": "The build starts. The running progress note shows the subagent reading steering_viz.py.", "gate": false, "unfinished": false, "x": 431, "y": 370, "colour": "#e07a3f"}, {"index": 4, "actor": "Subagent", "action": "Finishes the build and reports", "time": "2026-11-05T11:26:02-08:00", "display": "Nov 5, 11:26 AM", "evidence": "Suite 134 OK with 11 new tests. Decisions 4 calls and 5 questions on turns 9, 32, 33, and 34, all diverged. Biggest dip turn 6, net minus 40. The zero label, struck through by the baseline, caught on the screenshot and fixed.", "gate": false, "unfinished": false, "x": 525, "y": 370, "colour": "#e07a3f"}, {"index": 5, "actor": "Levko", "action": "Verifies it independently", "time": "2026-11-05T11:26:57-08:00", "display": "Nov 5, 11:26 AM", "evidence": "Levko recomputes every number from the embedded data and views the render screenshot, then presents the figure with a push option.", "gate": false, "unfinished": false, "x": 619, "y": 240, "colour": "#2f8f83"}, {"index": 6, "actor": "Yuriy", "action": "Approves the push", "time": "2026-11-05T16:41:38-08:00", "display": "Nov 5, 4:41 PM", "evidence": "Yuriy taps Push the dual timeline.", "gate": true, "unfinished": false, "x": 712, "y": 110, "colour": "#46689e"}, {"index": 7, "actor": "Levko", "action": "Pushes three files to main", "time": "2026-11-05T16:42:14-08:00", "display": "Nov 5, 4:42 PM", "evidence": "steering_viz.py, the figure, and the 11 tests, all with blob SHAs matching. Lands unreleased, for a future 0.1.8.", "gate": false, "unfinished": false, "x": 806, "y": 240, "colour": "#2f8f83"}, {"index": 8, "actor": "Levko", "action": "Links the figure on the demos page", "time": null, "display": "not yet", "evidence": "Levko offered to add the section and update the live site. Yuriy has not answered yet.", "gate": false, "unfinished": true, "x": 900, "y": 240, "colour": "#2f8f83"}]}</script>
+<main>
+<h1>Making of the dual timeline</h1>
+<p class="sub">How the dual timeline was made. 9 steps by one human and two AIs, Nov 5, 2026. 8 done, 1 still open.</p>
+<p class="howto">How to read this: time runs left to right, one column per step, one lane per actor. A diamond is an approval gate. An open outline is a step that has not happened yet. Click any node for that step.</p>
+<div class="stage">
+<canvas id="making" width="1000" height="520"></canvas>
+<div class="panel" id="panel">
+<h2>Pick a step</h2>
+<p>Click any node to see what happened at that step, when it happened, and the message that records it.</p>
+</div>
+</div>
+<div class="legend"><span><span class="shape" style="color:#46689e">●</span>Yuriy</span><span><span class="shape" style="color:#2f8f83">●</span>Levko</span><span><span class="shape" style="color:#e07a3f">●</span>Subagent</span><span><span class="shape" style="color:#17222e">◇</span>Approval gate (human)</span><span><span class="shape" style="color:#8a97a5">○</span>Still open</span></div>
+<p class="callouts">The subagent built the figure in 14 minutes. The push approval came 5 hours after verification. The demos link is still open.</p>
+<p class="caption">This is a hand-built record of one chat, not a computed receipt. Each step cites the message that records it, and only steps found in the transcript are shown. Nothing here was measured from a session.</p>
+</main>
+
+<script>
+const D = JSON.parse(document.getElementById('making-data').textContent);
+const canvas = document.getElementById('making');
+const ctx = canvas.getContext('2d');
+const W = 1000, H = 520;
+const LANE_Y = {Yuriy: 110, Levko: 240, Subagent: 370};
+let selected = null;
+function drawLanes() {
+  ctx.font = '13px system-ui, sans-serif';
+  Object.keys(LANE_Y).forEach(a => {
+    const y = LANE_Y[a];
+    ctx.fillStyle = '#5c6b7a';
+    ctx.textAlign = 'left';
+    ctx.fillText(a, 12, y + 5);
+    ctx.strokeStyle = '#eef2f5';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(100, y);
+    ctx.lineTo(W - 20, y);
+    ctx.stroke();
+  });
+}
+function drawArrow(x0, y0, x1, y1) {
+  ctx.strokeStyle = '#8a97a5';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+  const ang = Math.atan2(y1 - y0, x1 - x0);
+  ctx.fillStyle = '#8a97a5';
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - 10 * Math.cos(ang - 0.4), y1 - 10 * Math.sin(ang - 0.4));
+  ctx.lineTo(x1 - 10 * Math.cos(ang + 0.4), y1 - 10 * Math.sin(ang + 0.4));
+  ctx.closePath();
+  ctx.fill();
+}
+function drawNode(s) {
+  ctx.beginPath();
+  if (s.gate) {
+    ctx.moveTo(s.x, s.y - 14);
+    ctx.lineTo(s.x + 14, s.y);
+    ctx.lineTo(s.x, s.y + 14);
+    ctx.lineTo(s.x - 14, s.y);
+    ctx.closePath();
+    ctx.fillStyle = s.colour;
+    ctx.fill();
+  } else if (s.unfinished) {
+    ctx.arc(s.x, s.y, 11, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = s.colour;
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else {
+    ctx.arc(s.x, s.y, 11, 0, Math.PI * 2);
+    ctx.fillStyle = s.colour;
+    ctx.fill();
+  }
+  if (selected === s.index) {
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#17222e';
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#17222e';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  const labelW = ctx.measureText(s.display).width;
+  ctx.fillStyle = '#fbfcfe';
+  ctx.fillRect(s.x - labelW / 2 - 3, s.y + 18, labelW + 6, 16);
+  ctx.fillStyle = '#17222e';
+  ctx.fillText(s.display, s.x, s.y + 30);
+}
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  drawLanes();
+  const steps = D.steps;
+  for (let i = 1; i < steps.length; i++) {
+    drawArrow(steps[i - 1].x, steps[i - 1].y, steps[i].x, steps[i].y);
+  }
+  steps.forEach(drawNode);
+  ctx.fillStyle = '#5c6b7a';
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Nov 5, 2026', 12, 490);
+}
+function showPanel(s) {
+  const panel = document.getElementById('panel');
+  const when = s.unfinished ? 'No time yet. This step is still open.'
+    : s.display + ', Nov 5, 2026';
+  const gate = s.gate ? '<p><b>Approval gate.</b> The human held this step.</p>' : '';
+  panel.innerHTML = '<h2>' + s.action + '</h2>'
+    + '<p class="big">' + s.actor + '</p>'
+    + '<p>' + when + '</p>'
+    + gate
+    + '<p>' + s.evidence + '</p>';
+}
+canvas.addEventListener('click', function(e) {
+  const r = canvas.getBoundingClientRect();
+  const mx = (e.clientX - r.left) * (W / r.width);
+  const my = (e.clientY - r.top) * (H / r.height);
+  let best = null, bestD = 20;
+  D.steps.forEach(s => {
+    const d = Math.hypot(s.x - mx, s.y - my);
+    if (d < bestD) { bestD = d; best = s; }
+  });
+  if (best) { selected = best.index; draw(); showPanel(best); }
+});
+draw();
+</script>
+</body></html>
