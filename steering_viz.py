@@ -2081,9 +2081,15 @@ def making_of_data(steps):
                 - datetime.fromisoformat(timed[5]["time"]))
         minutes = int(round(build.total_seconds() / 60))
         hours = int(wait.total_seconds() // 3600)
+        if any(r["unfinished"] for r in rows):
+            tail = "The demos link is still open."
+        else:
+            closed = datetime.fromisoformat(timed[-1]["time"])
+            tail = ("The demos link closed on %s."
+                    % closed.strftime("%B %-d"))
         callout = (f"The subagent built the figure in {minutes} minutes. "
                    f"The push approval came {hours} hours after "
-                   f"verification. The demos link is still open.")
+                   f"verification. {tail}")
     return {"steps": rows, "callout": callout}
 
 
