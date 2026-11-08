@@ -41,15 +41,15 @@ class TestMakingOfData(unittest.TestCase):
             self.assertTrue(s["evidence"])
             self.assertIn("gate", s)
             self.assertIn("unfinished", s)
-        # Finished steps carry times, in order, inside Nov 5 to 6.
+        # Finished steps carry times, in order, inside Nov 5 to 7.
         times = [datetime.fromisoformat(s["time"]) for s in steps
                  if not s["unfinished"]]
-        self.assertEqual(len(times), 8)
+        self.assertEqual(len(times), 9)
         self.assertTrue(all(times[i] < times[i + 1]
                             for i in range(len(times) - 1)))
         for t in times:
             self.assertEqual((t.year, t.month), (2026, 11))
-            self.assertIn(t.day, (5, 6))
+            self.assertIn(t.day, (5, 7))
 
     def test_chain_matches_the_transcript(self):
         steps = json.loads(DATA.read_text(encoding="utf-8"))
@@ -66,7 +66,7 @@ class TestMakingOfData(unittest.TestCase):
         self.assertEqual(steps[7]["time"], "2026-11-05T16:42:14-08:00")
         self.assertIn("blob SHAs matching", steps[7]["evidence"])
 
-    def test_two_gates_are_yuriy_and_final_step_is_open(self):
+    def test_two_gates_are_yuriy_and_final_step_is_closed(self):
         steps = json.loads(DATA.read_text(encoding="utf-8"))
         gates = [s for s in steps if s["gate"]]
         self.assertEqual(len(gates), 2)
@@ -74,8 +74,8 @@ class TestMakingOfData(unittest.TestCase):
         self.assertEqual([s["action"] for s in gates],
                          ["Picks the dual timeline", "Approves the push"])
         last = steps[-1]
-        self.assertTrue(last["unfinished"])
-        self.assertIsNone(last["time"])
+        self.assertFalse(last["unfinished"])
+        self.assertEqual(last["time"], "2026-11-07T09:34:51-08:00")
         self.assertEqual(last["action"],
                          "Links the figure on the demos page")
 
@@ -86,7 +86,7 @@ class TestMakingOfData(unittest.TestCase):
         # The push approval came 11:26:57 to 16:41:38, 5 hours.
         self.assertIn("14 minutes", data["callout"])
         self.assertIn("5 hours", data["callout"])
-        self.assertIn("still open", data["callout"])
+        self.assertIn("closed on November 7", data["callout"])
 
 
 class TestMakingOfRender(unittest.TestCase):
@@ -120,7 +120,7 @@ class TestMakingOfRender(unittest.TestCase):
         self.assertTrue(all(xs[i] < xs[i + 1] for i in range(8)))
         lanes = {s["actor"] for s in payload["steps"]}
         self.assertEqual(lanes, set(steering_viz.MAKING_LANES))
-        self.assertTrue(payload["steps"][-1]["unfinished"])
+        self.assertFalse(payload["steps"][-1]["unfinished"])
         self.assertEqual(
             [s["gate"] for s in payload["steps"]],
             [False, True, False, False, False, False, True, False,
